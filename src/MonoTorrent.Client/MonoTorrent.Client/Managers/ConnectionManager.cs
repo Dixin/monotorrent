@@ -241,7 +241,6 @@ namespace MonoTorrent.Client
         internal async ReusableTask<ConnectionFailureReason?> ProcessNewOutgoingConnection (TorrentManager manager, Peer peer, IPeerConnection connection, IList<EncryptionType> allowedEncryption)
         {
             var bitfield = new BitField (manager.Bitfield.Length);
-            Interlocked.Increment (ref openConnections);
 
             IEncryption decryptor;
             IEncryption encryptor;
@@ -296,6 +295,7 @@ namespace MonoTorrent.Client
 
                 manager.Peers.ActivePeers.Add (peer);
                 manager.Peers.ConnectedPeers.Add (id);
+                Interlocked.Increment (ref openConnections);
 
                 manager.Mode.HandlePeerConnected (id);
                 id.MessageQueue.SetReady ();
