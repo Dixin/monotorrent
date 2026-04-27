@@ -205,6 +205,8 @@ namespace MonoTorrent.BEncoding
 
                 if (buffer[i] < (byte) '0' || buffer[i] > (byte) '9')
                     throw new BEncodingException ($"Invalid BEncodedString. Length was '{length}' instead of a number");
+                if (length == 0 && i > 0)
+                    throw new BEncodingException ($"Invalid BEncodedString. The length was prefixed with '0'.");
                 length = length * 10 + (buffer[i] - '0');
                 if (length < 0)
                     throw new BEncodingException ($"Invalid BEncodedString. Length overflowed the size of an int64");

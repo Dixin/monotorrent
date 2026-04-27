@@ -195,7 +195,10 @@ namespace MonoTorrent.BEncoding
                     return pool.GetInternedOrCreateNew (reader, length);
 
                 if (read < '0' || read > '9')
-                    throw new BEncodingException ($"Invalid BEncodedString. Length was '{length}' instead of a number");
+                    throw new BEncodingException ($"Invalid BEncodedString. Length was '{(char)read}' instead of a number");
+                if (length == 0)
+                    throw new BEncodingException ($"Invalid BEncodedString. The length was prefixed with '0'.");
+
                 length = length * 10 + (read - '0');
                 if (length < 0)
                     throw new BEncodingException ($"Invalid BEncodedString. Length overflowed the size of an int64");

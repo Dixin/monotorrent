@@ -216,5 +216,13 @@ namespace MonoTorrent.BEncoding
             Assert.Throws<BEncodingException> (() => BEncodedValue.Decode (benString));
             Assert.Throws<BEncodingException> (() => BEncodedValue.Decode (new MemoryStream(benString)));
         }
+
+        [Test]
+        public void DecodeString_ZeroPrefixed ()
+        {
+            var benString = Encoding.UTF8.GetBytes ("05:test5");
+            Assert.Throws<BEncodingException> (() => BEncodedValue.Decode (benString));
+            Assert.Throws<BEncodingException> (() => BEncodedValue.Decode (new MemoryStream (benString)));
+        }
     }
 }
