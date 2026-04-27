@@ -206,6 +206,8 @@ namespace MonoTorrent.BEncoding
                 if (buffer[i] < (byte) '0' || buffer[i] > (byte) '9')
                     throw new BEncodingException ($"Invalid BEncodedString. Length was '{length}' instead of a number");
                 length = length * 10 + (buffer[i] - '0');
+                if (length < 0)
+                    throw new BEncodingException ($"Invalid BEncodedString. Length overflowed the size of an int64");
             }
 
             throw new BEncodingException ($"Invalid BEncodedString. The ':' separater was not found.");

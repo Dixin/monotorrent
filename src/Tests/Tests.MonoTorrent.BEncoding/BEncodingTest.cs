@@ -194,6 +194,22 @@ namespace MonoTorrent.BEncoding
         }
 
         [Test]
+        public void DecodeString_InvalidSeparator ()
+        {
+            var benString = Encoding.UTF8.GetBytes ("4atest");
+            Assert.Throws<BEncodingException> (() => BEncodedValue.Decode (benString));
+            Assert.Throws<BEncodingException> (() => BEncodedValue.Decode (new MemoryStream (benString)));
+        }
+
+        [Test]
+        public void DecodeString_LongLongLength ()
+        {
+            var benString = Encoding.UTF8.GetBytes ("999999999999999999:test");
+            Assert.Throws<BEncodingException> (() => BEncodedValue.Decode (benString));
+            Assert.Throws<BEncodingException> (() => BEncodedValue.Decode (new MemoryStream (benString)));
+        }
+
+        [Test]
         public void DecodeString_TooShort ()
         {
             var benString = Encoding.UTF8.GetBytes ("5:test");

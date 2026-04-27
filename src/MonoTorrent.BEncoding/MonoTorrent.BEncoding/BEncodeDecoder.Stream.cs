@@ -197,6 +197,8 @@ namespace MonoTorrent.BEncoding
                 if (read < '0' || read > '9')
                     throw new BEncodingException ($"Invalid BEncodedString. Length was '{length}' instead of a number");
                 length = length * 10 + (read - '0');
+                if (length < 0)
+                    throw new BEncodingException ($"Invalid BEncodedString. Length overflowed the size of an int64");
             }
 
             throw new BEncodingException ("Invalid data found. Aborting");
