@@ -200,15 +200,5 @@ namespace MonoTorrent.BEncoding
             Assert.Throws<BEncodingException> (() => BEncodedValue.Decode (benString));
             Assert.Throws<BEncodingException> (() => BEncodedValue.Decode (new MemoryStream(benString)));
         }
-
-        static bool ByteMatch (byte[] first, byte[] second)
-        {
-            if (first.Length != second.Length)
-                return false;
-            for (int i = 0; i < first.Length; i++)
-                if (first[i] != second[i])
-                    return false;
-            return true;
-        }
     }
 }
