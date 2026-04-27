@@ -177,6 +177,9 @@ namespace MonoTorrent.BEncoding
                 }
                 if (buffer[i] < '0' || buffer[i] > '9')
                     throw new BEncodingException ("Invalid number found.");
+                if ((sign == -1 || i > 0) && result == 0 && buffer[i] == '0')
+                    throw new BEncodingException ("Invalid number found. The invalid number is negative zero or negative leading zero.");
+
                 result = result * 10 + (buffer[i] - '0');
             }
 

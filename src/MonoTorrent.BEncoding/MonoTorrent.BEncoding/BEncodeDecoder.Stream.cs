@@ -169,15 +169,19 @@ namespace MonoTorrent.BEncoding
                 val = reader.ReadByte ();
             }
 
-            if (val == 'e')
-                throw new BEncodingException ("Invalid data found. Aborting.");
-
+            var readValue = false;
             do {
-                if (val == 'e')
+                if (val == 'e') {
+                    if (!readValue)
+                        throw new BEncodingException ("BEncodedNumber did not contain any digits between the 'i' and 'e'");
                     return result * sign;
+                }
                 if (val < '0' || val > '9')
                     throw new BEncodingException ("Invalid number found.");
+                if ((sign == -1 || readValue) && result == 0 && val == '0')
+                    throw new BEncodingException ("Invalid number found. The invalid number is negative zero or negative leading zero.");
                 result = result * 10 + (val - '0');
+                readValue = true;
             } while ((val = reader.ReadByte ()) != -1);
 
             throw new BEncodingException ("Invalid data found. Aborting.");
