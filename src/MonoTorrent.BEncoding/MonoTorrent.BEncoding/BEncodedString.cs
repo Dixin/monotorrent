@@ -75,20 +75,8 @@ namespace MonoTorrent.BEncoding
         /// The value of the BEncodedString interpreted as a UTF-8 string. If the underlying bytes
         /// cannot be represented in UTF-8 then the invalid byte sequence is silently discarded.
         /// </summary>
-#if NETSTANDARD2_0 || NET472
-        public unsafe string Text {
-            get {
-                var span = Span;
-                if (span.Length == 0)
-                    return "";
-                fixed (byte* spanPtr = span)
-                    return Encoding.UTF8.GetString (spanPtr, span.Length);
-            }
-        }
-#else
         public string Text
             => Encoding.UTF8.GetString (Span);
-#endif
 
         public ReadOnlySpan<byte> Span => TextBytes.Span;
 
@@ -142,43 +130,12 @@ namespace MonoTorrent.BEncoding
         /// <returns>The number of bytes encoded</returns>
         public override int Encode (Span<byte> buffer)
         {
-            var written = WriteLengthAsAscii (buffer, TextBytes.Length);
+            if (!TextBytes.Length.TryFormat (buffer, out int written))
+                throw new InvalidOperationException ("Could not write the length of the BEncodedString");
             buffer[written++] = (byte) ':';
             Span.CopyTo (buffer.Slice (written));
             return written + Span.Length;
         }
-
-#if NETSTANDARD2_0 || NET472
-        static int WriteLengthAsAscii (Span<byte> buffer, int asciiLength)
-        {
-            if (asciiLength == 0) {
-                buffer[0] = (byte) '0';
-                return 1;
-            }
-
-            // int32.MinValue can have at most 11 characters
-            Span<byte> printedchars = stackalloc byte[11];
-            int counter = printedchars.Length;
-            while (asciiLength > 0) {
-                printedchars[--counter] = (byte) ('0' + asciiLength % 10);
-                asciiLength /= 10;
-            }
-            printedchars.Slice (counter).CopyTo (buffer);
-            return printedchars.Length - counter;
-        }
-#else
-        static int WriteLengthAsAscii (Span<byte> buffer, int asciiLength)
-        {
-            Span<char> asciiChars = stackalloc char[16];
-            if (!asciiLength.TryFormat (asciiChars, out int written))
-                throw new InvalidOperationException ("Could not write the length of the BEncodedString");
-
-            for (int i = 0; i < written; i++)
-                buffer[i] = (byte) asciiChars[i];
-
-            return written;
-        }
-#endif
 
         public override int LengthInBytes ()
         {

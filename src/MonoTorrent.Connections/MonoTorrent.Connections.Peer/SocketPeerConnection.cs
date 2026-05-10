@@ -143,9 +143,9 @@ namespace MonoTorrent.Connections.Peer
             if (ReceiveArgs == null) {
                 ReceiveArgs = new SocketAsyncEventArgs ();
                 ReceiveArgs.Completed += Handler;
-                ReceiveArgs .UserToken = ReceiveTcs;
+                ReceiveArgs.UserToken = ReceiveTcs;
             }
-            SetBuffer (ReceiveArgs, buffer);
+            ReceiveArgs.SetBuffer (buffer);
 
             SocketAsyncEventArgs args = ReceiveArgs;
 
@@ -175,7 +175,7 @@ namespace MonoTorrent.Connections.Peer
                 SendArgs.Completed += Handler;
                 SendArgs.UserToken = SendTcs;
             }
-            SetBuffer (SendArgs, buffer);
+            SendArgs.SetBuffer (buffer);
 
             SocketAsyncEventArgs args = SendArgs;
 
@@ -200,17 +200,6 @@ namespace MonoTorrent.Connections.Peer
             Disposed = true;
             ConnectCancellation.Cancel ();
             Socket?.Dispose ();
-        }
-
-        static void SetBuffer (SocketAsyncEventArgs args, Memory<byte> buffer)
-        {
-#if NETSTANDARD2_0 || NET472
-            if (!MemoryMarshal.TryGetArray (buffer, out ArraySegment<byte> segment))
-                throw new ArgumentException ("Could not retrieve the underlying buffer");
-            args.SetBuffer (segment.Array, segment.Offset, segment.Count);
-#else
-            args.SetBuffer (buffer);
-#endif
         }
     }
 

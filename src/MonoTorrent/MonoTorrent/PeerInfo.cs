@@ -128,17 +128,13 @@ namespace MonoTorrent
 
             var stride = sizeOfIP + 2;
 
-            // Round it off into a multipl eof 'stride' bytes.
+            // Round it off into a multiple of 'stride' bytes.
             buffer = buffer.Slice (0, (buffer.Length / stride) * stride);
 
             while (buffer.Length > 0) {
                 var ipBuffer = buffer.Slice (0, sizeOfIP);
                 var portBuffer = buffer.Slice (sizeOfIP, 2);
-#if NETSTANDARD2_0 || NET472
-                var ip = new IPAddress (ipBuffer.ToArray ());
-#else
                 var ip = new IPAddress (ipBuffer);
-#endif
                 var port = BinaryPrimitives.ReadUInt16BigEndian (portBuffer);
 
                 var endPoint = new IPEndPoint (ip, port);

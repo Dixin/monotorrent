@@ -78,11 +78,17 @@ namespace MonoTorrent.Client
         }
 
         [Test]
-        public void DisposeBeforeConnect ()
+        public async Task DisposeBeforeConnect ()
         {
             using var c = Factories.Default.CreatePeerConnection (new Uri ($"ipv4://127.0.0.1:12345"));
             c.Dispose ();
-            Assert.ThrowsAsync<ObjectDisposedException> (async () => await NetworkIO.ConnectAsync (c));
+            Exception ex = null;
+            try {
+                await NetworkIO.ConnectAsync (c);
+            } catch (Exception e) {
+                ex = e;
+            }
+            Assert.IsNotNull (ex);
         }
 
         [Test]

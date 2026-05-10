@@ -76,25 +76,9 @@ namespace System.Numerics
             return CeilLog10 ((ulong) value);
         }
 
-
-#if NETSTANDARD2_0 || NETSTANDARD2_1 || NET472
-        [MethodImpl (MethodImplOptions.AggressiveInlining)]
-        public static uint PopCount (uint v)
-        {
-            v -= (v >> 1) & 0x55555555;
-            v = (v & 0x33333333) + ((v >> 2) & 0x33333333);
-            return (((v + (v >> 4) & 0xF0F0F0F) * 0x1010101) >> 24);
-        }
-
-        [MethodImpl (MethodImplOptions.AggressiveInlining)]
-        public static int PopCount (ulong v)
-            => (int) (PopCount ((uint) v) + PopCount ((uint) (v >> 32)));
-#else
-
         [MethodImpl (MethodImplOptions.AggressiveInlining)]
         public static int PopCount (ulong v)
             => System.Numerics.BitOperations.PopCount (v);
-#endif
 
         [MethodImpl (MethodImplOptions.AggressiveInlining)]
         public static uint RoundUpToPowerOf2 (int value)
@@ -137,38 +121,13 @@ namespace System.Numerics
         [MethodImpl (MethodImplOptions.AggressiveInlining)]
         static int FloorLog2 (uint value)
         {
-#if NETSTANDARD2_0 || NETSTANDARD2_1 || NET472
-            Span<uint> b = stackalloc uint[] { 0x2, 0xC, 0xF0, 0xFF00, 0xFFFF0000 };
-            Span<uint> S = stackalloc uint[] { 1, 2, 4, 8, 16 };
-
-            uint result = 0; // result of log2(v) will go here
-            for (int i = 4; i >= 0; i--) // unroll for speed...
-            {
-                if ((value & b[i]) != 0) {
-                    value >>= (int) S[i];
-                    result |= S[i];
-                }
-            }
-            return (int) result;
-#else
             return BitOperations.Log2 (value);
-#endif
         }
 
         [MethodImpl (MethodImplOptions.AggressiveInlining)]
         static uint RoundUpToPowerOf2 (uint value)
         {
-#if NETSTANDARD2_0 || NETSTANDARD2_1 || NETCOREAPP3_0 || NET5_0 || NET472
-            --value;
-            value |= value >> 1;
-            value |= value >> 2;
-            value |= value >> 4;
-            value |= value >> 8;
-            value |= value >> 16;
-            return value + 1;
-#else
             return BitOperations.RoundUpToPowerOf2 (value);
-#endif
         }
 
         [MethodImpl (MethodImplOptions.AggressiveInlining)]
