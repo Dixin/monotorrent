@@ -96,23 +96,28 @@ namespace MonoTorrent.Connections.Peer
 
         #region Async Methods
 
-        public async ReusableTask ConnectAsync ()
+        public async ReusableTask<bool> ConnectAsync ()
         {
             if (Connector == null)
                 throw new InvalidOperationException ("This connection represents an incoming connection");
 
-            Socket = await Connector.ConnectAsync (Uri, Cancellation.Token);
-            if (Disposed) {
-                Socket.Dispose ();
-                throw new SocketException ((int) SocketError.Shutdown);
+            try {
+                Socket = await Connector.ConnectAsync (Uri, Cancellation.Token).ConfigureAwait (false);
+                if (Disposed) {
+                    Socket.Dispose ();
+                    return false;
+                }
+            } catch {
+                return false;
             }
+            return true;
         }
 
         public async ReusableTask<int> ReceiveAsync (Memory<byte> buffer)
-            => await (Socket?.ReceiveAsync (buffer) ?? throw new InvalidOperationException ("The underlying socket is not connected"));
+            => await (Socket?.ReceiveAsync (buffer).ConfigureAwait (false) ?? throw new InvalidOperationException ("The underlying socket is not connected"));
 
         public async ReusableTask<int> SendAsync (ReadOnlyMemory<byte> buffer)
-            => await (Socket?.SendAsync (buffer) ?? throw new InvalidOperationException ("The underlying socket is not connected"));
+            => await (Socket?.SendAsync (buffer).ConfigureAwait (false) ?? throw new InvalidOperationException ("The underlying socket is not connected"));
 
         public void Dispose ()
         {

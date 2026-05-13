@@ -168,9 +168,9 @@ namespace MonoTorrent.Connections.Peer
 
         #endregion Constructors
 
-        public ReusableTask ConnectAsync ()
+        public ReusableTask<bool> ConnectAsync ()
         {
-            return ReusableTask.CompletedTask;
+            return ReusableTask.FromResult (true);
         }
 
         public async ReusableTask<int> ReceiveAsync (Memory<byte> socketBuffer)

@@ -58,7 +58,7 @@ namespace MonoTorrent
         [EditorBrowsable (EditorBrowsableState.Never)]
         public void OnCompleted (Action continuation)
         {
-            ThreadPool.UnsafeQueueUserWorkItem (ThreadSwitcherWorkItem.GetOrCreate (continuation), false);
+            ThreadPool.UnsafeQueueUserWorkItem (ThreadSwitcherWorkItem.GetOrCreate (continuation), true);
         }
 
         internal class ThreadSwitcherWorkItem : IThreadPoolWorkItem
@@ -66,7 +66,7 @@ namespace MonoTorrent
             static readonly Action EmptyAction = () => { };
             static readonly SpinLocked<Stack<ThreadSwitcherWorkItem>> Cache = SpinLocked.Create (new Stack<ThreadSwitcherWorkItem> ());
 
-            public Action Continuation { get; private set; } = EmptyAction;
+            Action Continuation = EmptyAction;
 
             public static ThreadSwitcherWorkItem GetOrCreate (Action action)
             {

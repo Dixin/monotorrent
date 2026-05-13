@@ -58,9 +58,9 @@ namespace MonoTorrent.Client
             IsIncoming = isIncoming;
         }
 
-        public ReusableTask ConnectAsync ()
+        public ReusableTask<bool> ConnectAsync ()
         {
-            return ReusableTask.CompletedTask;
+            return ReusableTask.FromResult (true);
         }
 
         public void Dispose ()

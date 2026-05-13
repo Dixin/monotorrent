@@ -82,13 +82,7 @@ namespace MonoTorrent.Client
         {
             using var c = Factories.Default.CreatePeerConnection (new Uri ($"ipv4://127.0.0.1:12345"));
             c.Dispose ();
-            Exception ex = null;
-            try {
-                await NetworkIO.ConnectAsync (c);
-            } catch (Exception e) {
-                ex = e;
-            }
-            Assert.IsNotNull (ex);
+            Assert.IsFalse (await NetworkIO.ConnectAsync (c));
         }
 
         [Test]

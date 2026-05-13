@@ -209,7 +209,8 @@ namespace MonoTorrent.Client
         async ReusableTask<ConnectionFailureReason?> DoConnectToPeer (TorrentManager manager, Peer peer, IPeerConnection connection, IList<EncryptionType> allowedEncryption)
         {
             try {
-                await NetworkIO.ConnectAsync (connection);
+                if (!await NetworkIO.ConnectAsync (connection))
+                    return ConnectionFailureReason.Unreachable;
             } catch {
                 // A failure to connect is unlikely to be fixed by retrying a different encryption method, so bail out immediately.
                 return ConnectionFailureReason.Unreachable;

@@ -43,12 +43,12 @@ namespace MonoTorrent.Connections
         {
             var socket = new Socket ((uri.Scheme == "ipv4") ? AddressFamily.InterNetwork : AddressFamily.InterNetworkV6, SocketType.Stream, ProtocolType.Tcp);
             try {
-                await socket.ConnectAsync (IPAddress.Parse (uri.Host), uri.Port, token);
-                return socket;
-            } catch {
+                await socket.ConnectAsync (IPAddress.Parse (uri.Host), uri.Port, token).ConfigureAwait (false);
+            } catch{
                 socket.Dispose ();
                 throw;
             }
+            return socket;
         }
     }
 }
