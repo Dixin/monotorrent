@@ -105,7 +105,7 @@ namespace MonoTorrent.Client
 
                 c.Dispose ();
                 using var releaser = MemoryPool.Default.Rent (123, out Memory<byte> buffer);
-                Assert.AreEqual (0, await c.ReceiveAsync (buffer).WithTimeout ());
+                Assert.ThrowsAsync<ObjectDisposedException> (() => c.ReceiveAsync (buffer).WithTimeout ());
             } finally {
                 listener.Stop ();
             }
@@ -125,7 +125,7 @@ namespace MonoTorrent.Client
 
                 c.Dispose ();
                 using var releaser = MemoryPool.Default.Rent (123, out Memory<byte> buffer);
-                Assert.AreEqual (0, await c.SendAsync (buffer).WithTimeout ());
+                Assert.ThrowsAsync<ObjectDisposedException> (() => c.SendAsync (buffer).WithTimeout ());
             } finally {
                 listener.Stop ();
             }

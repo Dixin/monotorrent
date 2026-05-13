@@ -39,65 +39,16 @@ namespace MonoTorrent.Connections
 {
     public class SocketConnector : ISocketConnector
     {
-        static readonly Queue<SocketAsyncEventArgs> cache = new Queue<SocketAsyncEventArgs> ();
-        static readonly EventHandler<SocketAsyncEventArgs> Handler = HandleOperationCompleted;
-        static readonly Action<object?> SocketDisposer = (state) => ((Socket) state!).Dispose ();
-
-        static SocketAsyncEventArgs GetSocketAsyncEventArgs ()
-        {
-            SocketAsyncEventArgs args;
-            lock (cache) {
-                if (cache.Count == 0) {
-                    args = new SocketAsyncEventArgs ();
-                    args.Completed += Handler;
-                } else {
-                    args = cache.Dequeue ();
-                }
-            }
-            return args;
-        }
-
-        static void HandleOperationCompleted (object? sender, SocketAsyncEventArgs e)
-        {
-            var tcs = (ReusableTaskCompletionSource<int>) e.UserToken!;
-            SocketError error = e.SocketError;
-
-            if (error != SocketError.Success)
-                tcs.SetException (new SocketException ((int) error));
-            else
-                tcs.SetResult (0);
-        }
-
         public async ReusableTask<Socket> ConnectAsync (Uri uri, CancellationToken token)
         {
             var socket = new Socket ((uri.Scheme == "ipv4") ? AddressFamily.InterNetwork : AddressFamily.InterNetworkV6, SocketType.Stream, ProtocolType.Tcp);
-            var endPoint = new IPEndPoint (IPAddress.Parse (uri.Host), uri.Port);
-
-            using var registration = token.Register (SocketDisposer, socket);
-            var tcs = new ReusableTaskCompletionSource<int> ();
-            SocketAsyncEventArgs args = GetSocketAsyncEventArgs ();
-            args.RemoteEndPoint = endPoint;
-            args.UserToken = tcs;
-
             try {
-                if (!socket.ConnectAsync (args)) {
-                    if (args.SocketError == SocketError.Success)
-                        tcs.SetResult (0);
-                    else
-                        tcs.SetException (new SocketException ((int) args.SocketError));
-                }
-
-                await tcs.Task;
+                await socket.ConnectAsync (IPAddress.Parse (uri.Host), uri.Port, token);
+                return socket;
             } catch {
                 socket.Dispose ();
                 throw;
-            } finally {
-                args.RemoteEndPoint = null;
-                args.UserToken = null;
-                lock (cache)
-                    cache.Enqueue (args);
             }
-            return socket;
         }
     }
 }

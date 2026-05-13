@@ -66,7 +66,7 @@ namespace MonoTorrent.Client
             throw new NotImplementedException ();
         }
 
-        public ReusableTask<int> SendAsync (Memory<byte> buffer)
+        public ReusableTask<int> SendAsync (ReadOnlyMemory<byte> buffer)
         {
             throw new NotImplementedException ();
         }

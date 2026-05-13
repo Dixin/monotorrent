@@ -303,7 +303,7 @@ namespace MonoTorrent.Connections.Peer
             throw new WebException ("Unable to download the required data from the server");
         }
 
-        public async ReusableTask<int> SendAsync (Memory<byte> socketBuffer)
+        public async ReusableTask<int> SendAsync (ReadOnlyMemory<byte> socketBuffer)
         {
             SendResult = new TaskCompletionSource<object?> ();
 

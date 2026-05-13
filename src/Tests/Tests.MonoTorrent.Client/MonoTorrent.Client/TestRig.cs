@@ -273,7 +273,7 @@ namespace MonoTorrent.Client
             return ManualBytesReceived ?? result;
         }
 
-        public async ReusableTask<int> SendAsync (Memory<byte> buffer)
+        public async ReusableTask<int> SendAsync (ReadOnlyMemory<byte> buffer)
         {
             if (SlowConnection)
                 buffer = buffer.Slice (0, Math.Min (88, buffer.Length));

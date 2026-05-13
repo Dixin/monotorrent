@@ -72,7 +72,7 @@ namespace MonoTorrent.Client
             return ReusableTask.FromResult (0);
         }
 
-        public ReusableTask<int> SendAsync (Memory<byte> buffer)
+        public ReusableTask<int> SendAsync (ReadOnlyMemory<byte> buffer)
         {
             return ReusableTask.FromResult (0);
         }
