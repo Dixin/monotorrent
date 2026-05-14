@@ -69,6 +69,18 @@ namespace MonoTorrent.BEncoding
         public static implicit operator BEncodedString? (byte[]? value)
             => value is null ? null : (value.Length == 0 ? Empty : new BEncodedString (value));
 
+        public static bool operator == (BEncodedString? left, BEncodedString? right)
+        {
+            if (left is null)
+                return right is null;
+            if (right is null)
+                return false;
+            return left.Span.SequenceEqual (right.Span);
+        }
+
+        public static bool operator != (BEncodedString? left, BEncodedString? right)
+            => !(left == right);
+
         readonly ReadOnlyMemory<byte> TextBytes;
 
         /// <summary>
