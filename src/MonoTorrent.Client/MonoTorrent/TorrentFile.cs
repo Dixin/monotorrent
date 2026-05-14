@@ -157,7 +157,7 @@ namespace MonoTorrent
 
             // register padding file byte counts into padding field of the real predecessor file
             for (int t = 0, real = -1; t < files.Length; t++) {
-                if ((files[t].attributes & TorrentFileAttributes.Padding) != 0) {
+                if ((files[t].attributes & TorrentFileAttributes.Padding) == TorrentFileAttributes.Padding) {
                     if (real < 0) {
                         // this will only happen if the first file is a padding file, bep-0047 doesn't seem to forbid that
                         // Do not try to handle this, it would be very messy.
