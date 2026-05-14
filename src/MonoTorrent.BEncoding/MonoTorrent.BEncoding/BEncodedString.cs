@@ -28,9 +28,11 @@
 
 
 using System;
+using System.Collections.Frozen;
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
 using System.Web;
 
 namespace MonoTorrent.BEncoding
@@ -178,20 +180,14 @@ namespace MonoTorrent.BEncoding
         }
 
         public bool Equals (BEncodedString? other)
-            => !(other is null) && Span.SequenceEqual (other.Span);
+            => other is not null && Span.SequenceEqual (other.Span);
 
         public override int GetHashCode ()
         {
-            if (Span.Length >= 4)
-                return MemoryMarshal.Read<int> (Span);
-            if (Span.Length > 0)
-                return Span[0];
-            return 0;
+            var hc = new HashCode ();
+            hc.AddBytes (Span);
+            return hc.ToHashCode ();
         }
-
-        [Obsolete("This wraps HttpUtility.UrlEncode which improperly encodes ' ' as '+' instead of '%20' when cencoding for a query param")]
-        public string UrlEncode ()
-            => HttpUtility.UrlEncode (Span.ToArray ());
 
         public string ToHex ()
             => BitConverter.ToString (Span.ToArray ());

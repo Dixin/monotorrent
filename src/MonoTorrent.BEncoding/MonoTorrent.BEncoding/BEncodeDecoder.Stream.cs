@@ -27,6 +27,7 @@
 //
 
 using System;
+using System.Buffers;
 using System.IO;
 using System.Security.Cryptography;
 
@@ -36,10 +37,22 @@ namespace MonoTorrent.BEncoding
     {
         static readonly BEncodedString InfoKey = new BEncodedString ("info");
 
-        public static BEncodedValue Decode (Stream reader, bool strictDecoding)
-            => Decode (reader, strictDecoding, reader.ReadByte ());
+        internal static BEncodedValue Decode (Stream reader, bool strictDecoding)
+        {
+            using (var pool = new BEncodedStringPool (MemoryPool<byte>.Shared.Rent (128)))
+                return Decode (reader, pool, strictDecoding, reader.ReadByte ());
+        }
 
-        public static (BEncodedDictionary torrent, RawInfoHashes infohashes) DecodeTorrent (Stream reader)
+        internal static (BEncodedDictionary torrent, RawInfoHashes infohashes) DecodeTorrent (Stream reader)
+        {
+            using (var pool = new BEncodedStringPool (MemoryPool<byte>.Shared.Rent (128)))
+                return DecodeTorrent (reader, pool);
+        }
+
+        static BEncodedValue Decode (Stream reader, BEncodedStringPool pool, bool strictDecoding)
+            => Decode (reader, pool, strictDecoding, reader.ReadByte ());
+
+        static (BEncodedDictionary torrent, RawInfoHashes infohashes) DecodeTorrent (Stream reader, BEncodedStringPool pool)
         {
             var torrent = new BEncodedDictionary ();
             if (reader.ReadByte () != 'd')
@@ -56,20 +69,20 @@ namespace MonoTorrent.BEncoding
                     throw new BEncodingException ("Invalid key length");
 
                 BEncodedValue value;
-                var key = (BEncodedString) Decode (reader, false, read);         // keys have to be BEncoded strings
+                var key = (BEncodedString) Decode (reader, pool, false, read);         // keys have to be BEncoded strings
 
                 if ((read = reader.ReadByte ()) == 'd') {
                     if (InfoKey.Equals (key)) {
                         using var sha1Reader = new HashingReader (reader, (byte) 'd', SHA1.Create ());
                         using var sha256Reader = new HashingReader (sha1Reader, (byte) 'd', SHA256.Create ());
-                        value = DecodeDictionary (sha256Reader, false);
+                        value = DecodeDictionary (sha256Reader, pool, false);
                         infohashSHA1 = sha1Reader.TransformFinalBlock ();
                         infohashSHA256 = sha256Reader.TransformFinalBlock ();
                     } else {
-                        value = DecodeDictionary (reader, false);
+                        value = DecodeDictionary (reader, pool, false);
                     }
                 } else {
-                    value = Decode (reader, false, read);
+                    value = Decode (reader, pool, false, read);
                 }
                 torrent.Add (key, value);
             }
@@ -77,17 +90,17 @@ namespace MonoTorrent.BEncoding
             throw new BEncodingException ("Invalid data found. Aborting");
         }
 
-        static BEncodedValue Decode (Stream reader, bool strictDecoding, int read)
+        static BEncodedValue Decode (Stream reader, BEncodedStringPool pool, bool strictDecoding, int read)
         {
             switch (read) {
                 case 'i':
-                    return DecodeNumber (reader);
+                    return DecodeNumber (reader, pool);
 
                 case 'd':
-                    return DecodeDictionary (reader, strictDecoding);
+                    return DecodeDictionary (reader, pool, strictDecoding);
 
                 case 'l':
-                    return DecodeList (reader, strictDecoding);
+                    return DecodeList (reader, pool, strictDecoding);
 
                 case '1':
                 case '2':
@@ -99,14 +112,14 @@ namespace MonoTorrent.BEncoding
                 case '8':
                 case '9':
                 case '0':
-                    return DecodeString (reader, read - '0');
+                    return DecodeString (reader, pool, read - '0');
 
                 default:
                     throw new BEncodingException ("Could not find what value to decode");
             }
         }
 
-        static BEncodedDictionary DecodeDictionary (Stream reader, bool strictDecoding)
+        static BEncodedDictionary DecodeDictionary (Stream reader, BEncodedStringPool pool, bool strictDecoding)
         {
             int read;
             BEncodedString? oldkey = null;
@@ -118,7 +131,7 @@ namespace MonoTorrent.BEncoding
                 if (read < '0' || read > '9')
                     throw new BEncodingException ("Invalid key length");
 
-                var key = DecodeString (reader, read - '0');         // keys have to be BEncoded strings
+                var key = DecodeString (reader, pool, read - '0');         // keys have to be BEncoded strings
 
                 if (oldkey != null && oldkey.CompareTo (key) > 0)
                     if (strictDecoding)
@@ -126,27 +139,27 @@ namespace MonoTorrent.BEncoding
                             $"Illegal BEncodedDictionary. The attributes are not ordered correctly. Old key: {oldkey}, New key: {key}");
 
                 oldkey = key;
-                var value = Decode (reader, strictDecoding);                     // the value is a BEncoded value
+                var value = Decode (reader, pool, strictDecoding);                     // the value is a BEncoded value
                 dictionary.Add (key, value);
             }
 
             throw new BEncodingException ("Invalid data found. Aborting");
         }
 
-        static BEncodedList DecodeList (Stream reader, bool strictDecoding)
+        static BEncodedList DecodeList (Stream reader, BEncodedStringPool pool, bool strictDecoding)
         {
             var list = new BEncodedList ();
             int read;
             while ((read = reader.ReadByte ()) != -1) {
                 if (read == 'e')
                     return list;
-                list.Add (Decode (reader, strictDecoding, read));
+                list.Add (Decode (reader, pool, strictDecoding, read));
             }
 
             throw new BEncodingException ("Invalid data found. Aborting");
         }
 
-        static BEncodedNumber DecodeNumber (Stream reader)
+        static BEncodedNumber DecodeNumber (Stream reader, BEncodedStringPool pool)
         {
             int sign = 1;
             long result = 0;
@@ -170,16 +183,12 @@ namespace MonoTorrent.BEncoding
             throw new BEncodingException ("Invalid data found. Aborting.");
         }
 
-        static BEncodedString DecodeString (Stream reader, int length)
+        static BEncodedString DecodeString (Stream reader, BEncodedStringPool pool, int length)
         {
             int read;
             while ((read = reader.ReadByte ()) != -1) {
-                if (read == ':') {
-                    var bytes = new byte[length];
-                    if (reader.Read (bytes, 0, length) != length)
-                        throw new BEncodingException ("Couldn't decode string");
-                    return BEncodedString.FromMemory (bytes);
-                }
+                if (read == ':')
+                    return pool.GetInternedOrCreateNew (reader, length);
 
                 if (read < '0' || read > '9')
                     throw new BEncodingException ($"Invalid BEncodedString. Length was '{length}' instead of a number");
