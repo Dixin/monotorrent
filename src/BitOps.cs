@@ -35,6 +35,28 @@ namespace System.Numerics
     // Currently provides implementations of integer based Log and Power operations.
     static class BitOps
     {
+        static readonly ReadOnlyMemory<ulong> PowersOf10 = new ulong[] {
+            1ul,
+            10ul,
+            100ul,
+            1000ul,
+            10000ul,
+            100000ul,
+            1000000ul,
+            10000000ul,
+            100000000ul,
+            1000000000ul,
+            10000000000ul,
+            100000000000ul,
+            1000000000000ul,
+            10000000000000ul,
+            100000000000000ul,
+            1000000000000000ul,
+            10000000000000000ul,
+            100000000000000000ul,
+            1000000000000000000ul,
+            10000000000000000000ul};
+
         /// <summary>
         /// Returns the log2 of the passed value rounded up.
         /// </summary>
@@ -92,30 +114,8 @@ namespace System.Numerics
         [MethodImpl (MethodImplOptions.AggressiveInlining)]
         static int CeilLog10 (ulong value)
         {
-            Span<ulong> PowersOf10 = stackalloc ulong[] {
-                1ul,
-                10ul,
-                100ul,
-                1000ul,
-                10000ul,
-                100000ul,
-                1000000ul,
-                10000000ul,
-                100000000ul,
-                1000000000ul,
-                10000000000ul,
-                100000000000ul,
-                1000000000000ul,
-                10000000000000ul,
-                100000000000000ul,
-                1000000000000000ul,
-                10000000000000000ul,
-                100000000000000000ul,
-                1000000000000000000ul,
-                10000000000000000000ul};
-
             var tmp = ((CeilLog2 (value) + 1) * 1233) >> 12; // (use a lg2 method from above)
-            return tmp - (value < PowersOf10[tmp] ? 1 : 0);
+            return tmp - (value < PowersOf10.Span[tmp] ? 1 : 0);
         }
 
         [MethodImpl (MethodImplOptions.AggressiveInlining)]
