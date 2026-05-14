@@ -56,6 +56,11 @@ namespace MonoTorrent
         public ReadOnlyMemory<byte> sha1 = default;
         public TorrentFileAttributes attributes = TorrentFileAttributes.None;
         public MerkleRoot MerkleRoot;
+
+        public override string ToString ()
+        {
+            return $"{path} - {length}";
+        }
     }
 
     public sealed class TorrentFile : IEquatable<TorrentFile>, ITorrentFile
