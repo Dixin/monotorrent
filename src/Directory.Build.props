@@ -27,7 +27,7 @@
   <PropertyGroup>
     <!-- Use a fixed version for the core libraries so end-users can upgrade as desired -->
     <GitInfoVersion>2.0.34</GitInfoVersion>
-    <ReusableTasksVersion>4.0.0</ReusableTasksVersion>
+    <ReusableTasksVersion>5.0.0</ReusableTasksVersion>
     <MonoNatVersion>3.0</MonoNatVersion>
   </PropertyGroup>
 
