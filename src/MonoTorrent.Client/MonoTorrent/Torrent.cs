@@ -662,16 +662,17 @@ namespace MonoTorrent
                     // FIXME: Log invalid paths somewhere?
                     continue;
 
+                // Ensure path is valid
+                PathValidator.Validate (tup.path);
+
                 // If this is *not* a padding file, ensure it is sorted alphabetically higher than the last non-padding file
                 // when loading a hybrid torrent.
                 // 
                 // By BEP52 spec, hybrid torrents Hybrid torrents have padding files inserted between each file, and so must
                 // have a fixed hash order to guarantee that the set up finrequired to have strictly alphabetical file ordering so
                 // the v1 hashes are guaranteed to match after padding files are inserted.
-                PathValidator.Validate (tup.path);
-
                 var lastNonPaddingFile = files.FindLast (t => !t.attributes.HasFlag (TorrentFileAttributes.Padding) && t.length > 0);
-                if (isHybridTorrent && !tup.attributes.HasFlag (TorrentFileAttributes.Padding) && lastNonPaddingFile != null && StringComparer.Ordinal.Compare (tup.path, lastNonPaddingFile.path) < 0)
+                if (isHybridTorrent && !tup.attributes.HasFlag (TorrentFileAttributes.Padding) && lastNonPaddingFile != null && PathPartComparer.Instance.Compare (tup.path, lastNonPaddingFile.path) < 0)
                     throw new TorrentException ("The list of files must be in strict alphabetical order in a hybrid torrent");
                 files.Add (tup);
             }

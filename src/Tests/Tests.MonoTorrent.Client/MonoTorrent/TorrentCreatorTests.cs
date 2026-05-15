@@ -288,6 +288,50 @@ namespace MonoTorrent.Common
         }
 
         [Test]
+        public async Task CreateHybridTorrent_PadNonEmptyFiles ()
+        {
+            var fileSource = new CustomFileSource ([
+                new FileMapping ("a", "a", 4),
+                new FileMapping ("b", "b", 0),
+                new FileMapping ("c", "c", 0),
+                new FileMapping ("d", "d", 5),
+            ]);
+
+            TorrentCreator torrentCreator = new TorrentCreator (TorrentType.V1V2Hybrid, TestFactories);
+            var dict = await torrentCreator.CreateAsync (fileSource);
+            var torrent = Torrent.Load (dict);
+            Assert.AreEqual (4, torrent.Files.Count);
+
+            Assert.AreEqual (torrentCreator.PieceLength - 4, torrent.Files.Single (t => t.Path == "a").Padding);
+            Assert.AreEqual (4, torrent.Files.Single (t => t.Path == "a").Length);
+            Assert.AreEqual (0, torrent.Files.Single (t => t.Path == "b").Padding);
+            Assert.AreEqual (0, torrent.Files.Single (t => t.Path == "b").Length);
+            Assert.AreEqual (0, torrent.Files.Single (t => t.Path == "c").Padding);
+            Assert.AreEqual (0, torrent.Files.Single (t => t.Path == "c").Length);
+            Assert.AreEqual (0, torrent.Files.Single (t => t.Path == "d").Padding);
+            Assert.AreEqual (5, torrent.Files.Single (t => t.Path == "d").Length);
+        }
+
+        [Test]
+        public async Task CreateHybridTorrent_SortedCorrectly ()
+        {
+            // Ensure base directories 'foo' and 'foo a' sort correctly
+            // as the may appear as 'foo/' and 'foo a/' which has a different sort order.
+            // We have to get the sort order right to match the v1 and v2 layouts.
+            var fileSource = new CustomFileSource ([
+                new FileMapping (Path.Combine ("a", "b"), Path.Combine ("a", "b"), 4),
+                new FileMapping (Path.Combine ("a a", "b"),Path.Combine ("a a", "b"), 4),
+                new FileMapping ("b", "b", 4),
+            ]);
+
+            TorrentCreator torrentCreator = new TorrentCreator (TorrentType.V1V2Hybrid, TestFactories);
+            var dict = await torrentCreator.CreateAsync (fileSource);
+            var torrent = Torrent.Load (dict);
+            var fileTree = (BEncodedDictionary) ((BEncodedDictionary) dict["info"])["file tree"];
+
+        }
+
+        [Test]
         public async Task CreateHybridTorrent_SortFilesCorrectly ()
         {
             var destFiles = new[] {
@@ -320,8 +364,6 @@ namespace MonoTorrent.Common
             var aFile = (BEncodedDictionary) ((BEncodedDictionary) fileTree["a"]);
             Assert.IsTrue (aFile.ContainsKey ("z"));
             Assert.IsTrue (((BEncodedDictionary) aFile["z"]).ContainsKey ("Z.txt"));
-
-
         }
 
         [Test]
