@@ -161,7 +161,8 @@ namespace MonoTorrent
             long totalSize = 0;
 
             // register padding file byte counts into padding field of the real predecessor file
-            for (int t = 0, real = -1; t < files.Length; t++) {
+            int real = -1;
+            for (int t = 0; t < files.Length; t++) {
                 if ((files[t].attributes & TorrentFileAttributes.Padding) == TorrentFileAttributes.Padding) {
                     if (real < 0) {
                         // this will only happen if the first file is a padding file, bep-0047 doesn't seem to forbid that
@@ -173,10 +174,11 @@ namespace MonoTorrent
                         // add the count to it will also work in case of consecutive padding files, also slightly edge-case-y
                         files[real].padding += files[t].length;
                     }
-                } else {
+                } else if (files[t].length > 0) {
                     real = t;
                 }
             }
+
 
             // now we can forget the padding tuples
             files = files.Where (f => (f.attributes & TorrentFileAttributes.Padding) == 0).ToArray ();
