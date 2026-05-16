@@ -685,7 +685,7 @@ namespace MonoTorrent.Client
                 ContainingDirectory = SavePath;
             else {
                 PathValidator.Validate (Torrent.Name);
-                ContainingDirectory = Path.GetFullPath (Path.Combine (SavePath, TorrentFileInfo.PathEscape (Torrent.Name)));
+                ContainingDirectory = Path.GetFullPath (Path.Combine (SavePath, TorrentFilePathEscaper.PathEscape (Torrent.Name)));
             }
 
             if (!ContainingDirectory.StartsWith (SavePath))
@@ -696,7 +696,7 @@ namespace MonoTorrent.Client
             Files = Torrent.Files.Select (file => {
 
                 // Generate the paths when 'UsePartialFiles' is enabled.
-                var paths = TorrentFileInfo.GetNewPaths (Path.Combine (ContainingDirectory, TorrentFileInfo.PathAndFileNameEscape (file.Path)), usePartialFiles: true, isComplete: true);
+                var paths = TorrentFileInfo.GetNewPaths (Path.Combine (ContainingDirectory, TorrentFilePathEscaper.PathAndFileNameEscape (file.Path)), usePartialFiles: true, isComplete: true);
                 var downloadCompleteFullPath = paths.completePath;
                 var downloadIncompleteFullPath = paths.incompletePath;
 
