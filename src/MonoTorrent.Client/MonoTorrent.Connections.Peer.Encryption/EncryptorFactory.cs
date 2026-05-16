@@ -29,6 +29,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Threading;
 
@@ -55,7 +56,7 @@ namespace MonoTorrent.Connections.Peer.Encryption
             }
         }
 
-        internal static async ReusableTask<EncryptorResult> CheckIncomingConnectionAsync (IPeerConnection connection, IList<EncryptionType> allowedEncryption, InfoHash[] sKeys, Factories factories, TimeSpan timeout)
+        internal static async ReusableTask<EncryptorResult> CheckIncomingConnectionAsync (IPeerConnection connection, IList<EncryptionType> allowedEncryption, ImmutableList<InfoHash> sKeys, Factories factories, TimeSpan timeout)
         {
             if (!connection.IsIncoming)
                 throw new Exception ("oops");
@@ -65,7 +66,7 @@ namespace MonoTorrent.Connections.Peer.Encryption
             return await DoCheckIncomingConnectionAsync (connection, allowedEncryption, sKeys, factories).ConfigureAwait (false);
         }
 
-        static async ReusableTask<EncryptorResult> DoCheckIncomingConnectionAsync (IPeerConnection connection, IList<EncryptionType> preferredEncryption, InfoHash[] sKeys, Factories factories)
+        static async ReusableTask<EncryptorResult> DoCheckIncomingConnectionAsync (IPeerConnection connection, IList<EncryptionType> preferredEncryption, ImmutableList<InfoHash> sKeys, Factories factories)
         {
             bool supportsRC4Header = preferredEncryption.Contains (EncryptionType.RC4Header);
             bool supportsRC4Full = preferredEncryption.Contains (EncryptionType.RC4Full);

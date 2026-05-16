@@ -29,6 +29,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -74,7 +75,7 @@ namespace MonoTorrent.Client.Modes
 
             var connection = pair.Incoming;
 
-            var result = await EncryptorFactory.CheckIncomingConnectionAsync (connection, rig.Engine.Settings.AllowedEncryption, new[] { rig.Manager.InfoHashes.V1OrV2 }, Factories.Default, TaskExtensions.Timeout);
+            var result = await EncryptorFactory.CheckIncomingConnectionAsync (connection, rig.Engine.Settings.AllowedEncryption,  ImmutableList.Create<InfoHash> ().Add (rig.Manager.InfoHashes.V1OrV2), Factories.Default, TaskExtensions.Timeout);
 
             PeerId id = new PeerId (new Peer (new PeerInfo (connection.Uri)), connection, new BitField (rig.Torrent.PieceCount), rig.Manager.InfoHashes.V1OrV2, encryptor: result.Encryptor, decryptor: result.Decryptor, Software.Synthetic);
             decryptor = id.Decryptor;

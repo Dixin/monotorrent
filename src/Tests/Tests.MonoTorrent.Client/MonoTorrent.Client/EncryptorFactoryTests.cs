@@ -29,6 +29,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -50,7 +51,7 @@ namespace MonoTorrent.Client.Encryption
         IPeerConnection Outgoing => pair.Outgoing;
 
         InfoHash InfoHash;
-        InfoHash[] SKeys;
+        ImmutableList<InfoHash> SKeys;
 
         BEncodedString IncomingId;
         BEncodedString OutgoingId;
@@ -66,7 +67,7 @@ namespace MonoTorrent.Client.Encryption
                 new InfoHash (Enumerable.Repeat ((byte)253, 20).ToArray ()),
                 InfoHash,
                 new InfoHash (Enumerable.Repeat ((byte)252, 20).ToArray ())
-            };
+            }.ToImmutableList ();
 
             IncomingId = new BEncodedString (Enumerable.Repeat ((byte) '0', 20).ToArray ());
             OutgoingId = new BEncodedString (Enumerable.Repeat ((byte) '1', 20).ToArray ());

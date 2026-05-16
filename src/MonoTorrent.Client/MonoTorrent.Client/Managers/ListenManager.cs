@@ -29,6 +29,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 
 using MonoTorrent.Client.Listeners;
@@ -50,33 +51,29 @@ namespace MonoTorrent.Client
 
         IList<IPeerConnectionListener> Listeners { get; set; }
 
-        InfoHash[] SKeys { get; set; }
+        ImmutableList<InfoHash> SKeys { get; set; }
 
         internal ListenManager (ClientEngine engine)
         {
             Engine = engine ?? throw new ArgumentNullException (nameof (engine));
             Listeners = Array.Empty<IPeerConnectionListener> ();
-            SKeys = Array.Empty<InfoHash> ();
+            SKeys = ImmutableList<InfoHash>.Empty;
         }
 
         public void Add (InfoHashes skey)
         {
-            var clone = new List<InfoHash> (SKeys);
             if (skey.V1 != null)
-                clone.Add (skey.V1);
+                SKeys = SKeys.Add (skey.V1);
             if (skey.V2 != null)
-                clone.Add (skey.V2.Truncate ());
-            SKeys = clone.ToArray ();
+                SKeys = SKeys.Add (skey.V2.Truncate ());
         }
 
         public void Remove (InfoHashes skey)
         {
-            var clone = new List<InfoHash> (SKeys);
             if (skey.V1 != null)
-                clone.Remove (skey.V1);
+                SKeys = SKeys.Remove (skey.V1);
             if (skey.V2 != null)
-                clone.Remove (skey.V2.Truncate ());
-            SKeys = clone.ToArray ();
+                SKeys = SKeys.Remove (skey.V2.Truncate ());
         }
 
         public void SetListeners (IList<IPeerConnectionListener> listeners)
