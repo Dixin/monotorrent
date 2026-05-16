@@ -73,8 +73,8 @@ namespace MonoTorrent.BEncoding
 
                 if ((read = reader.ReadByte ()) == 'd') {
                     if (InfoKey.Equals (key)) {
-                        using var sha1Reader = new HashingReader (reader, (byte) 'd', SHA1.Create ());
-                        using var sha256Reader = new HashingReader (sha1Reader, (byte) 'd', SHA256.Create ());
+                        using var sha1Reader = new HashingReader (reader, (byte) 'd', IncrementalHash.CreateHash (HashAlgorithmName.SHA1));
+                        using var sha256Reader = new HashingReader (sha1Reader, (byte) 'd', IncrementalHash.CreateHash (HashAlgorithmName.SHA256));
                         value = DecodeDictionary (sha256Reader, pool, false);
                         infohashSHA1 = sha1Reader.TransformFinalBlock ();
                         infohashSHA256 = sha256Reader.TransformFinalBlock ();
