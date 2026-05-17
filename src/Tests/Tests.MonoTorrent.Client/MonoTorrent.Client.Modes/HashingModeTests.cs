@@ -254,8 +254,8 @@ namespace MonoTorrent.Client.Modes
             var unhashed = new BitField (bf).SetAll (false).Set (0, true);
             await Manager.LoadFastResumeAsync (new FastResume (Manager.InfoHashes, bf, unhashed));
 
-            var origUnhashed = new ReadOnlyBitField (Manager.UnhashedPieces);
-            var origBitfield = new ReadOnlyBitField (Manager.Bitfield);
+            var origUnhashed = ReadOnlyBitField.Snapshot (Manager.UnhashedPieces);
+            var origBitfield = ReadOnlyBitField.Snapshot (Manager.Bitfield);
             await Manager.LoadFastResumeAsync (await Manager.SaveFastResumeAsync ());
 
             Assert.IsTrue (origUnhashed.SequenceEqual (Manager.UnhashedPieces), "#3");

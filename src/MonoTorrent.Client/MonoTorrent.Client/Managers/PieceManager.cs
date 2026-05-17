@@ -52,7 +52,7 @@ namespace MonoTorrent.Client
         bool Initialised { get; set; }
         TorrentManager Manager { get; }
         IPieceRequester Requester { get; set; }
-        BitField PendingHashCheckPieces { get; set; }
+        BitField PendingHashCheckPieces;
 
         /// <summary>
         /// Returns true when every block has been requested at least once.

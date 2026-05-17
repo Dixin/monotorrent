@@ -72,7 +72,6 @@ namespace MonoTorrent.Client
                 CalculateEscapedPathLength (dir) +
                 (sep >= 0 ? 1 : 0) +
                 CalculateEscapedFileLength (file);
-            SpanAction<char, int> a;
 
             return string.Create (
                 newLength,

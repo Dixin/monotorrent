@@ -104,7 +104,7 @@ namespace MonoTorrent.PiecePicking
 
         // static readonly Logger logger = Logger.Create (nameof(StandardPicker));
 
-        BitField? CanRequestBitField;
+        BitField CanRequestBitField;
         PickedPieces? Requests { get; set; }
         IPieceRequesterData? TorrentData { get; set; }
 
@@ -331,9 +331,9 @@ namespace MonoTorrent.PiecePicking
         }
 
         public bool ContinueExistingRequest (IRequester peer, int startIndex, int endIndex, out PieceSegment segment)
-            => ContinueExistingRequest (peer, null, startIndex, endIndex, 1, false, false, out segment);
+            => ContinueExistingRequest (peer, default, startIndex, endIndex, 1, false, false, out segment);
 
-        bool ContinueExistingRequest (IRequester peer, ReadOnlyBitField? availablePieces, int startIndex, int endIndex, int maxDuplicateRequests, bool allowAbandoned, bool allowAny, out PieceSegment segment)
+        bool ContinueExistingRequest (IRequester peer, ReadOnlyBitField availablePieces, int startIndex, int endIndex, int maxDuplicateRequests, bool allowAbandoned, bool allowAny, out PieceSegment segment)
         {
             segment = PieceSegment.Invalid;
             if (Requests is null || TorrentData is null)
@@ -350,7 +350,7 @@ namespace MonoTorrent.PiecePicking
                     return false;
             }
 
-            if (availablePieces == null)
+            if (availablePieces.Length == 0)
                 return false;
 
             foreach (var p in Requests.Values) {
@@ -477,7 +477,7 @@ namespace MonoTorrent.PiecePicking
 
         int CanRequest (ReadOnlyBitField bitfield, int pieceStartIndex, int pieceEndIndex, ref int pieceCount)
         {
-            if (CanRequestBitField == null || Requests == null)
+            if (CanRequestBitField.Length == 0 || Requests == null)
                 return 0;
 
             // This is the easiest case to consider - special case it

@@ -29,13 +29,14 @@
 using System;
 using System.Buffers.Binary;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
+using System.Runtime.CompilerServices;
 
 namespace MonoTorrent
 {
-    public sealed class BitField
+    public readonly struct BitField
     {
-        ReadOnlyBitField? readOnlyWrapper;
-        BitFieldData Data { get; }
+        readonly BitFieldData Data;
 
         public bool AllFalse => Data.AllFalse;
 
@@ -47,16 +48,16 @@ namespace MonoTorrent
 
         public double PercentComplete => Data.PercentComplete;
 
-        internal Span<ulong> Span => Data.Data;
+        internal Span<ulong> Span => Data.Span;
 
         public int TrueCount => Data.TrueCount;
 
         public bool this[int index] {
-            get => Data[index];
-            set => Data[index] = value;
+            get => Data.Get(index);
+            set {
+                Data.Set(index, value);
+            }
         }
-
-        ReadOnlyBitField? ReadOnlyWrapper => (readOnlyWrapper ??= ReadOnlyBitField.From (Data));
 
         public BitField (ReadOnlyBitField other)
         {
@@ -72,11 +73,11 @@ namespace MonoTorrent
         public BitField (bool[] array)
             => Data = new BitFieldData (array);
 
-        public bool SequenceEqual (ReadOnlyBitField? other)
-            => other != null && other.TrueCount == TrueCount && other.Span.SequenceEqual (Span);
+        public bool SequenceEqual (ReadOnlyBitField value)
+            => Data.SequenceEqual (value.Data);
 
         public int CountTrue (ReadOnlyBitField selector)
-            => Data.CountTrue (selector);
+            => Data.CountTrue (selector.Data);
 
         /// <summary>
         /// Returns the index of the first <see langword="false" /> bit in the bitfield.
@@ -122,7 +123,7 @@ namespace MonoTorrent
 
         public BitField And (ReadOnlyBitField value)
         {
-            Data.And (value);
+            Data.And (value.Data);
             return this;
         }
 
@@ -134,13 +135,13 @@ namespace MonoTorrent
 
         public BitField From (ReadOnlyBitField value)
         {
-            Data.From (value);
+            Data.From (value.Data);
             return this;
         }
 
         public BitField NAnd (ReadOnlyBitField value)
         {
-            Data.NAnd (value);
+            Data.NAnd (value.Data);
             return this;
         }
 
@@ -152,19 +153,19 @@ namespace MonoTorrent
 
         public BitField Or (ReadOnlyBitField value)
         {
-            Data.Or (value);
+            Data.Or (value.Data);
             return this;
         }
 
         public BitField Xor (ReadOnlyBitField value)
         {
-            Data.Xor (value);
+            Data.Xor (value.Data);
             return this;
         }
 
         public BitField Set (int index, bool value)
         {
-            Data[index] = value;
+            Data.Set (index, value);
             return this;
         }
 
@@ -192,8 +193,10 @@ namespace MonoTorrent
             return this;
         }
 
-        [return: NotNullIfNotNull ("bitfield")]
-        public static implicit operator ReadOnlyBitField? (BitField? bitfield)
-            => bitfield?.ReadOnlyWrapper;
+        public override string? ToString ()
+            => Data.ToString ();
+
+        public static implicit operator ReadOnlyBitField (BitField bitfield)
+            => ReadOnlyBitField.Wrap (bitfield.Data);
     }
 }

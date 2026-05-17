@@ -38,7 +38,7 @@ namespace MonoTorrent.Messages.Peer
     {
         internal const byte MessageId = 5;
 
-        public static readonly BitfieldMessage UnknownLength = new BitfieldMessage (new ReadOnlyBitField (1));
+        public static readonly BitfieldMessage UnknownLength = new BitfieldMessage (new ReadOnlyBitField ());
 
         /// <summary>
         /// The bitfield
@@ -54,7 +54,8 @@ namespace MonoTorrent.Messages.Peer
         /// <param name="length">The length of the bitfield</param>
         public BitfieldMessage (int length)
         {
-            BitField = MutableBitField = new BitField (length);
+            MutableBitField = new BitField (length);
+            BitField = MutableBitField.Value;
             CanDecode = true;
         }
 
@@ -70,13 +71,13 @@ namespace MonoTorrent.Messages.Peer
 
         public override void Decode (ReadOnlySpan<byte> buffer)
         {
-            if (CanDecode && !(MutableBitField is null))
-                MutableBitField.From (buffer);
+            if (CanDecode && MutableBitField.HasValue)
+                MutableBitField.Value.From (buffer);
         }
 
         public override int Encode (Span<byte> buffer)
         {
-            if (BitField == null)
+            if (BitField.Length == 0)
                 throw new InvalidOperationException ("Cannot send a BitfieldMessage without a Bitfield. Are you trying to send a bitfield during metadata mode?");
             int written = buffer.Length;
 
@@ -91,7 +92,7 @@ namespace MonoTorrent.Messages.Peer
         /// <summary>
         /// Returns the length of the message in bytes
         /// </summary>
-        public override int ByteLength => ((BitField == null ? 0 : BitField.LengthInBytes) + 5);
+        public override int ByteLength => ((BitField.Length == 0 ? 0 : BitField.LengthInBytes) + 5);
 
 
         #region Overridden Methods
@@ -109,11 +110,11 @@ namespace MonoTorrent.Messages.Peer
             if (!(obj is BitfieldMessage bf))
                 return false;
 
-            return BitField == null ? bf.BitField == null : BitField.SequenceEqual (bf.BitField);
+            return BitField.SequenceEqual (bf.BitField);
         }
 
         public override int GetHashCode ()
-            => BitField == null ? 0 : BitField.GetHashCode ();
+            => BitField.GetHashCode ();
 
         #endregion
     }

@@ -52,7 +52,7 @@ namespace MonoTorrent.Client.Modes
             public ReadOnlyBitField AvailablePieces { get; }
             Dictionary<PeerId, IgnoringChokeStateRequester> WrappedPeers { get; }
             Dictionary<IgnoringChokeStateRequester, PeerId> UnwrappedPeers { get; }
-            public BitField ValidatedPieces { get; }
+            public readonly BitField ValidatedPieces;
             IList<ITorrentManagerFile> IPieceRequesterData.Files => Array.Empty<ITorrentManagerFile> ();
             public int PieceCount => (File.PieceCount + PieceLength - 1) / PieceLength;
             public int PieceLength { get; }

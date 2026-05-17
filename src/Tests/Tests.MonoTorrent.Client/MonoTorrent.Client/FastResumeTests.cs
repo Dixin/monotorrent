@@ -222,7 +222,7 @@ namespace MonoTorrent.Client
             var torrent = TestRig.CreatePrivate ();
             var path = engine.Settings.GetFastResumePath (torrent.InfoHashes);
             Directory.CreateDirectory (Path.GetDirectoryName (path));
-            File.WriteAllBytes (path, new FastResume (torrent.InfoHashes, new BitField (torrent.PieceCount).SetAll (true), new ReadOnlyBitField (torrent.PieceCount)).Encode ());
+            File.WriteAllBytes (path, new FastResume (torrent.InfoHashes, new BitField (torrent.PieceCount).SetAll (true), new BitField (torrent.PieceCount)).Encode ());
             var manager = await engine.AddAsync (torrent, Path.Combine(tmpDir.Path, "savedir"));
             Assert.IsTrue (manager.HashChecked);
             await manager.StartAsync ();

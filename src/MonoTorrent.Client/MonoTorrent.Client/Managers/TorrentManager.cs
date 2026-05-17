@@ -170,7 +170,7 @@ namespace MonoTorrent.Client
 
         public ReadOnlyBitField Bitfield => MutableBitField;
 
-        private BitField MutableBitField { get; set; }
+        BitField MutableBitField;
 
         public bool CanUseDht => Settings.AllowDht && (Torrent == null || !Torrent.IsPrivate);
 
@@ -244,7 +244,7 @@ namespace MonoTorrent.Client
         /// associated with that <see cref="TorrentFile"/> will not be hash checked. An IgnoringPicker is used
         /// to ensure pieces which have not been hash checked are never downloaded.
         /// </summary>
-        internal BitField UnhashedPieces { get; set; }
+        internal BitField UnhashedPieces;
 
         public bool HashChecked { get; private set; }
 
