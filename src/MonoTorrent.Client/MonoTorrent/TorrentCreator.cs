@@ -249,12 +249,6 @@ namespace MonoTorrent
         internal async Task<BEncodedDictionary> CreateAsync (string name, ITorrentFileSource fileSource, CancellationToken token)
         {
             var source = fileSource.Files.ToList ();
-            if (Path.AltDirectorySeparatorChar != Path.DirectorySeparatorChar) {
-                foreach (var file in source)
-                    if (file.Source.Contains (Path.AltDirectorySeparatorChar) || file.Destination.Contains (Path.AltDirectorySeparatorChar))
-                        throw new InvalidOperationException ("DERP");
-            }
-
             EnsureNoDuplicateFiles (source);
 
             if (source.All (t => t.Length == 0))
@@ -342,7 +336,7 @@ namespace MonoTorrent
 
         void AppendFileTree (ITorrentManagerFile key, ReadOnlyMemory<byte> value, BEncodedDictionary fileTree)
         {
-            var parts = key.Path.Split (Path.DirectorySeparatorChar);
+            var parts = key.Path.Split (new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar });
             foreach (var part in parts) {
                 if (!fileTree.TryGetValue (part, out BEncodedValue? inner)) {
                     fileTree[part] = inner = new BEncodedDictionary ();
@@ -582,7 +576,7 @@ namespace MonoTorrent
             var fileDict = new BEncodedDictionary ();
 
             var filePath = new BEncodedList ();
-            string[] splittetPath = file.Path.Split (new[] { Path.DirectorySeparatorChar }, StringSplitOptions.RemoveEmptyEntries);
+            string[] splittetPath = file.Path.Split (new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar }, StringSplitOptions.RemoveEmptyEntries);
             foreach (string s in splittetPath)
                 filePath.Add (new BEncodedString (s));
 

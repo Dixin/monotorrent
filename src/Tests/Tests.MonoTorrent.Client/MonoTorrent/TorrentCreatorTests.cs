@@ -130,6 +130,34 @@ namespace MonoTorrent.Common
         }
 
         [Test]
+        public void AlternateDirectorySeparators ()
+        {
+            if (Path.DirectorySeparatorChar == Path.AltDirectorySeparatorChar)
+                Assert.Inconclusive ();
+
+            foreach (var separator in new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar }) {
+                var source = new Source {
+                    TorrentName = "asd",
+                    Files = new[] {
+                        new FileMapping("a" + separator + "b", "c" + separator + "d", 123)
+                    }
+                };
+
+                var dict = new TorrentCreator (TorrentType.V1Only, Factories.Default.WithPieceWriterCreator (files => new DiskWriter (files))).Create (source);
+                var info = (BEncodedDictionary) ((BEncodedDictionary) dict)["info"];
+                var file = ((BEncodedList) info["files"])[0];
+                var pathParts = ((BEncodedDictionary) file)["path"] as BEncodedList;
+                Assert.IsTrue (pathParts[0].Equals (new BEncodedString ("c")));
+                Assert.IsTrue (pathParts[1].Equals (new BEncodedString ("d")));
+
+                var torrent = Torrent.Load (dict);
+                Assert.AreEqual (1, torrent.Files.Count);
+                Assert.AreEqual (123, torrent.Files[0].Length);
+                Assert.AreEqual (Path.Combine ("c", "d"), torrent.Files[0].Path);
+            }
+        }
+
+        [Test]
         public async Task AnnounceUrl_None ()
         {
             BEncodedDictionary dict = await creator.CreateAsync ("TorrentName", filesSource);
