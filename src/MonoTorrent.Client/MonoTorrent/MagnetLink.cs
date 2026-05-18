@@ -34,7 +34,7 @@ using System.Text;
 
 namespace MonoTorrent
 {
-    public class MagnetLink
+    public sealed class MagnetLink
     {
         /// <summary>
         /// The list of tracker Urls.
