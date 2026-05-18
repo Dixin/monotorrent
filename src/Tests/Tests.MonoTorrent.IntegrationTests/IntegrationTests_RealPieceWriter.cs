@@ -305,7 +305,8 @@ namespace MonoTorrent.IntegrationTests
                 : await StartTorrent (leecherEngine, torrent, _leecherDir.FullName, explitlyHashCheck, leecherIsSeedingHandler);
 
             Assert.AreEqual (leecherManager.Torrent.HttpSeeds.Count, leecherManager.MagnetLink.Webseeds.Count);
-            Assert.AreEqual (leecherManager.Torrent.HttpSeeds[0], leecherManager.MagnetLink.Webseeds[0]);
+            if (leecherManager.Torrent.HttpSeeds.Count > 0)
+                Assert.AreEqual (leecherManager.Torrent.HttpSeeds[0], leecherManager.MagnetLink.Webseeds[0]);
 
             // Wait for both managers to finish hashing/prepping!
             await seederIsSeeding.Task;
