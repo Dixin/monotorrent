@@ -177,6 +177,8 @@ namespace MonoTorrent.Client
             await seederManager.StartAsync ();
             await ready.WithTimeout ();
 
+            Assert.AreEqual (0, seeder.ConnectionManager.OpenConnections);
+            Assert.AreEqual (0, seederManager.OpenConnections);
             var failedPeer = new TaskCompletionSource<ConnectionAttemptFailedEventArgs> ();
             seederManager.ConnectionAttemptFailed += (o, e) => failedPeer.SetResult (e);
 
@@ -185,6 +187,8 @@ namespace MonoTorrent.Client
 
             var failedConnection = await failedPeer.Task;
             Assert.AreEqual (ConnectionFailureReason.ConnectedToSelf, failedConnection.Reason);
+            Assert.AreEqual (0, seeder.ConnectionManager.OpenConnections);
+            Assert.AreEqual (0, seederManager.OpenConnections);
         }
 
         [Test]
