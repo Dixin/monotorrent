@@ -1028,12 +1028,14 @@ namespace MonoTorrent.Client
 
         internal async ReusableTask RefreshPartialDownloadFilePaths (int fileStartIndex, int count, bool usePartialFiles)
         {
-            var files = Files;
             List<Task>? tasks = null;
             for (int i = fileStartIndex; i < fileStartIndex + count; i++) {
-                var current = files[i].FullPath;
-                var completePath = files[i].DownloadCompleteFullPath;
-                var incompletePath = files[i].DownloadCompleteFullPath + (usePartialFiles ? TorrentFileInfo.IncompleteFileSuffix : "");
+                (string path, string completePath, string incompletePath) newPaths = (
+                    "",
+                    Files[i].DownloadCompleteFullPath,
+                    Files[i].DownloadCompleteFullPath + (usePartialFiles ? TorrentFileInfo.IncompleteFileSuffix : "")
+                );
+                newPaths.path = Files[i].BitField.AllTrue ? newPaths.completePath : newPaths.incompletePath;
 
                 // When initially loading a torrent we might discover a file on disk with either the regular filename
                 // or the !mt suffix indicating a partial file. At this point we don't necessarily know if the file is
@@ -1041,12 +1043,9 @@ namespace MonoTorrent.Client
                 // file from that location regardless of the 'UsePartialFile' setting and so will always need to move files
                 // whenever this API is called as we can't assume the three properties are correctly set. No filesystem
                 // move will happen if it is in the correct place already.
-                if (files[i].BitField.AllTrue) {
+                if (Files[i].FullPath != newPaths.path || Files[i].DownloadCompleteFullPath != newPaths.completePath || Files[i].DownloadIncompleteFullPath != newPaths.incompletePath) {
                     tasks ??= new List<Task> ();
-                    tasks.Add (Engine!.DiskManager.MoveFileAsync (files[i], (completePath, completePath, incompletePath)));
-                } else if (!files[i].BitField.AllTrue) {
-                    tasks ??= new List<Task> ();
-                    tasks.Add (Engine!.DiskManager.MoveFileAsync (files[i], (incompletePath, completePath, incompletePath)));
+                    tasks.Add (Engine!.DiskManager.MoveFileAsync (Files[i], newPaths).AsTask ());
                 }
             }
             if (tasks != null)

@@ -479,13 +479,13 @@ namespace MonoTorrent.Client
             }
         }
 
-        internal Task MoveFileAsync (ITorrentManagerFile file, (string newPath, string downloadComplete, string downloadIncomplete) paths)
+        internal ReusableTask MoveFileAsync (ITorrentManagerFile file, (string newPath, string downloadComplete, string downloadIncomplete) paths)
             => MoveFileAsync ((TorrentFileInfo) file, paths);
 
-        internal Task MoveFileAsync (TorrentFileInfo file, (string newPath, string downloadComplete, string downloadIncomplete) paths)
+        internal ReusableTask MoveFileAsync (TorrentFileInfo file, (string newPath, string downloadComplete, string downloadIncomplete) paths)
             => MoveFileAsync (file, paths, false);
 
-        internal async Task MoveFilesAsync (IList<ITorrentManagerFile> files, string newRoot, bool overwrite)
+        internal async ReusableTask MoveFilesAsync (IList<ITorrentManagerFile> files, string newRoot, bool overwrite)
         {
             foreach (TorrentFileInfo file in files) {
                 var paths = TorrentFileInfo.GetNewPaths (Path.GetFullPath (Path.Combine (newRoot, file.Path)), Settings.UsePartialFiles, file.Path == file.DownloadCompleteFullPath);
@@ -493,12 +493,12 @@ namespace MonoTorrent.Client
             }
         }
 
-        async Task MoveFileAsync (TorrentFileInfo file, (string newPath, string downloadCompletePath, string downloadIncompletePath) paths, bool overwrite)
+        async ReusableTask MoveFileAsync (TorrentFileInfo file, (string newPath, string downloadCompletePath, string downloadIncompletePath) paths, bool overwrite)
         {
-            await IOLoop;
-
-            if (paths.newPath != file.FullPath && await Cache.Writer.ExistsAsync (file)) {
-                await Cache.Writer.MoveAsync (file, paths.newPath, overwrite);
+           if (paths.newPath != file.FullPath) {
+                await IOLoop;
+                if (await Cache.Writer.ExistsAsync (file))
+                    await Cache.Writer.MoveAsync (file, paths.newPath, overwrite).ConfigureAwait (false);
             }
             file.UpdatePaths (paths);
         }
