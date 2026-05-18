@@ -65,26 +65,26 @@ namespace MonoTorrent.Trackers
         /// have passed, or if <see cref="ITracker.MinUpdateInterval"/> seconds have passed and the Announce was unsuccessful.
         /// Otherwise returns false.
         /// </summary>
-        bool CanSendAnnounce {
-            get {
-                // NOTE: All trackers in a tier are supposed to be identical load balancers. As such we can
-                // assume all trackers have the same update intervals.
-                if (LastAnnounceSucceeded && TimeSinceLastAnnounce < ActiveTracker.UpdateInterval)
-                    return false;
-                if (!LastAnnounceSucceeded && TimeSinceLastAnnounce < ActiveTracker.MinUpdateInterval)
-                    return false;
+        public bool CanSendAnnounce (TorrentEvent torrentEvent) {
+            if (torrentEvent != TorrentEvent.None)
                 return true;
-            }
+
+            // NOTE: All trackers in a tier are supposed to be identical load balancers. As such we can
+            // assume all trackers have the same update intervals.
+            if (LastAnnounceSucceeded && TimeSinceLastAnnounce < ActiveTracker.UpdateInterval)
+                return false;
+            if (!LastAnnounceSucceeded && TimeSinceLastAnnounce < ActiveTracker.MinUpdateInterval)
+                return false;
+            return true;
         }
 
         /// <summary>
         /// Returns true if <see cref="ITracker.UpdateInterval"/> seconds have passed since the most recent
         /// scrape was sent.
         /// </summary>
-        bool CanSendScrape {
-            get {
-                return TimeSinceLastScrape > ActiveTracker.UpdateInterval;
-            }
+        public bool CanSendScrape ()
+        {
+            return TimeSinceLastScrape > ActiveTracker.UpdateInterval;
         }
 
         int ActiveTrackerIndex { get; set; }
@@ -137,7 +137,7 @@ namespace MonoTorrent.Trackers
         internal async ReusableTask AnnounceAsync (AnnounceRequest args, CancellationToken token)
         {
             // Bail out if we're announcing too frequently for this tracker tier.
-            if (args.ClientEvent == TorrentEvent.None && !CanSendAnnounce)
+            if (!CanSendAnnounce(args.ClientEvent))
                 return;
 
             if (!SentStartedEvent)
@@ -203,7 +203,7 @@ namespace MonoTorrent.Trackers
 
         internal async ReusableTask ScrapeAsync (ScrapeRequest args, CancellationToken token)
         {
-            if (!CanSendScrape)
+            if (!CanSendScrape())
                 return;
 
             for (int i = 0; i < Trackers.Count; i++) {

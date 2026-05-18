@@ -167,6 +167,16 @@ namespace MonoTorrent.Trackers
             // If the user initiates an Announce we need to go to the correct thread to process it.
             await ClientEngine.MainLoop;
 
+            // Now fast-path out if we think no announces will be needed.
+            if (tracker is null) {
+                // Fast exit if no tracker tiers need an announce
+                bool needsAnnounce = false;
+                foreach (var tier in Tiers)
+                    needsAnnounce |= tier.CanSendAnnounce (clientEvent);
+                if (!needsAnnounce)
+                    return;
+            }
+
             // Check if there are any in-progress announce requests being handled.
             if (!AnnounceLimiter.TryEnter (out ReusableSemaphore.Releaser releaser)) {
                 // There is an in-progress announce, and this is a regular recurring announce attempt, so just bail out.
@@ -217,6 +227,13 @@ namespace MonoTorrent.Trackers
 
         public async ReusableTask ScrapeAsync (CancellationToken token)
         {
+            // Fast exit if it's too early to send a scrape to any tier.
+            bool anyNeedsScrape = false;
+            foreach (var tier in Tiers)
+                anyNeedsScrape |= tier.CanSendScrape ();
+            if (!anyNeedsScrape)
+                return;
+
             // If the user initiates a Scrape we need to go to the correct thread to process it.
             await ClientEngine.MainLoop;
 
