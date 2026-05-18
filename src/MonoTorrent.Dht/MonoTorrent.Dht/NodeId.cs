@@ -36,7 +36,7 @@ using MonoTorrent.BEncoding;
 
 namespace MonoTorrent.Dht
 {
-    struct NodeId : IEquatable<NodeId>, IComparable<NodeId>, IComparable
+    readonly struct NodeId : IEquatable<NodeId>, IComparable<NodeId>, IComparable
     {
         internal static readonly NodeId Minimum = NodeId.FromMemory (new byte[20]);
         internal static readonly NodeId Maximum = NodeId.FromMemory (Enumerable.Repeat ((byte) 255, 20).ToArray ());
