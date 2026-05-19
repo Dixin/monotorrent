@@ -79,16 +79,27 @@ namespace MonoTorrent.BEncoding
                 return false;
             }
 
-            public void Add (BEncodedString value)
+            public bool TryGetOrAddValue (ReadOnlySpan<byte> key, out BEncodedString value)
             {
                 var hc = new HashCode ();
-                hc.AddBytes (value.Span);
+                hc.AddBytes (key);
                 var hash = hc.ToHashCode () & BucketingFactor;
 
-                if (!dict.TryGetValue (hash, out var list))
+                if (dict.TryGetValue (hash, out var list)) {
+                    foreach (var s in list) {
+                        if (s.Span.SequenceEqual (key)) {
+                            value = s;
+                            return true;
+                        }
+                    }
+                } else {
                     dict[hash] = list = new List<BEncodedString> (32);
+                }
+
+                value = new BEncodedString (key.ToArray ());
                 list.Add (value);
-                MaxLength = Math.Max (MaxLength, value.Span.Length);
+                MaxLength = Math.Max (MaxLength, key.Length);
+                return true;
             }
 
             public IEnumerator<BEncodedString> GetEnumerator ()
@@ -115,33 +126,33 @@ namespace MonoTorrent.BEncoding
 
         static BEncodedStringPool ()
         {
-            Hardcoded = new Lookup {
-                // Common .torrent keys
-                ".pad",
-                "attr",
-                "info",
-                "length",
-                "files",
-                "p",
-                "path",
-                "piece length",
-                "pieces root",
+            Hardcoded = new Lookup ();
 
-                // Common DHT keys
-                "a",
-                "announce_peer",
-                "e",
-                "find_target",
-                "id",
-                "nodes",
-                "ping",
-                "q",
-                "r",
-                "t",
-                "token",
-                "v",
-                "y",
-            };
+            // Common .torrent keys
+            Hardcoded.TryGetOrAddValue (".pad"u8, out var _);
+            Hardcoded.TryGetOrAddValue ("attr"u8, out var _);
+            Hardcoded.TryGetOrAddValue ("info"u8, out var _);
+            Hardcoded.TryGetOrAddValue ("length"u8, out var _);
+            Hardcoded.TryGetOrAddValue ("files"u8, out var _);
+            Hardcoded.TryGetOrAddValue ("p"u8, out var _);
+            Hardcoded.TryGetOrAddValue ("path"u8, out var _);
+            Hardcoded.TryGetOrAddValue ("piece length"u8, out var _);
+            Hardcoded.TryGetOrAddValue ("pieces root"u8, out var _);
+
+            // Common DHT keys
+            Hardcoded.TryGetOrAddValue ("a"u8, out var _);
+            Hardcoded.TryGetOrAddValue ("announce_peer"u8, out var _);
+            Hardcoded.TryGetOrAddValue ("e"u8, out var _);
+            Hardcoded.TryGetOrAddValue ("find_target"u8, out var _);
+            Hardcoded.TryGetOrAddValue ("id"u8, out var _);
+            Hardcoded.TryGetOrAddValue ("nodes"u8, out var _);
+            Hardcoded.TryGetOrAddValue ("ping"u8, out var _);
+            Hardcoded.TryGetOrAddValue ("q"u8, out var _);
+            Hardcoded.TryGetOrAddValue ("r"u8, out var _);
+            Hardcoded.TryGetOrAddValue ("t"u8, out var _);
+            Hardcoded.TryGetOrAddValue ("token"u8, out var _);
+            Hardcoded.TryGetOrAddValue ("v"u8, out var _);
+            Hardcoded.TryGetOrAddValue ("y"u8, out var _);
 
             Instance = new BEncodedStringPool (null);
         }
@@ -180,38 +191,25 @@ namespace MonoTorrent.BEncoding
                 return result;
 
             // Otherwise see if we have a local cache and look it up there.
-            if (Dynamic is not null && Dynamic.TryGetValue (bytes.Span, out result))
+            if (Dynamic is not null && length != 32 && length < InterningBuffer.Memory.Length && Dynamic.TryGetOrAddValue (bytes.Span, out result))
                 return result;
 
-            // It wasn't in a cache, so create a new instance. Add it to the cache if there is one.
-            // This is a caching instance, so add it now.
-            result = BEncodedString.FromMemory (length > InterningBuffer.Memory.Length ? bytes : bytes.ToArray ());
-
-            // Don't add 32 byte results to the dynamic cache, as these are likely to be infohashes
-            // and there are likely to be many of them.
-            if (Dynamic is not null && length != 32 &&  length < InterningBuffer.Memory.Length)
-                Dynamic.Add (result);
-            return result;
+            return BEncodedString.FromMemory (length > InterningBuffer.Memory.Length ? bytes : bytes.ToArray ());
         }
 
         public BEncodedString GetInternedOrCreateNew (ReadOnlySpan<byte> key)
         {
-            if (key.Length == 0)
+            var length = key.Length;
+            if (length == 0)
                 return BEncodedString.Empty;
 
-            if (Hardcoded.TryGetValue (key, out var result))
+            if (length < Hardcoded.MaxLength && Hardcoded.TryGetValue (key, out var result))
                 return result;
 
-            if (Dynamic is not null && Dynamic.TryGetValue (key, out result))
+            if (Dynamic is not null && length != 32 && length < 128 && Dynamic.TryGetOrAddValue (key, out result))
                 return result;
 
-            result = BEncodedString.FromMemory (key.ToArray ());
-
-            // Don't add 32 byte results to the dynamic cache, as these are likely to be infohashes
-            // and there are likely to be many of them. Don't add really large items either.
-            if (Dynamic is not null && result.Span.Length != 32 && result.Span.Length < 128)
-                Dynamic.Add (result);
-            return result;
+            return BEncodedString.FromMemory (key.ToArray ());
         }
 
         public void Dispose ()
