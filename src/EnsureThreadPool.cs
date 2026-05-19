@@ -56,7 +56,8 @@ namespace MonoTorrent
         [EditorBrowsable(EditorBrowsableState.Never)]
         public void OnCompleted(Action continuation)
         {
-            ThreadPool.UnsafeQueueUserWorkItem (ThreadSwitcher.ThreadSwitcherWorkItem.GetOrCreate (continuation), true);
+            // We want this to run on another thread, so don't prefer the local queue.
+            ThreadPool.UnsafeQueueUserWorkItem (ThreadSwitcher.ThreadSwitcherWorkItem.GetOrCreate (continuation), false);
         }
     }
 }
