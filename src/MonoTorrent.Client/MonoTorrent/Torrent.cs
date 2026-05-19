@@ -52,8 +52,8 @@ namespace MonoTorrent
             if (string.IsNullOrEmpty (path))
                 throw new ArgumentException ("value must not be null or empty", nameof (path));
 
-            using Stream s = new FileStream (path, FileMode.Open, FileAccess.Read, FileShare.Read);
-            return Load (s, default);
+            using Stream s = new FileStream (path, FileMode.Open, FileAccess.Read, FileShare.Read, 2048, FileOptions.SequentialScan);
+            return Load (s);
         }
 
         /// <summary>
@@ -75,7 +75,14 @@ namespace MonoTorrent
         /// <param name="span">The Span containing the data</param>
         /// <returns></returns>
         public static Torrent Load (ReadOnlySpan<byte> span)
-            => Load (null, span);
+        {
+            try {
+                (var torrentDict, var infoHashes) = BEncodedDictionary.DecodeTorrent (span);
+                return new Torrent (torrentDict, infoHashes);
+            } catch (BEncodingException ex) {
+                throw new TorrentException ("Invalid torrent file specified", ex);
+            }
+        }
 
         /// <summary>
         /// Loads a .torrent from the supplied stream
@@ -83,18 +90,9 @@ namespace MonoTorrent
         /// <param name="stream">The stream containing the data to load</param>
         /// <returns></returns>
         public static Torrent Load (Stream stream)
-            => Load (stream ?? throw new ArgumentNullException (nameof (stream)), default);
-
-        /// <summary>
-        /// Called from either Load(stream) or Load(string).
-        /// </summary>
-        /// <param name="stream"></param>
-        /// <param name="buffer"></param>
-        /// <returns></returns>
-        static Torrent Load (Stream? stream, ReadOnlySpan<byte> buffer)
         {
             try {
-                (var torrentDict, var infoHashes) = stream is null ? BEncodedDictionary.DecodeTorrent (buffer) : BEncodedDictionary.DecodeTorrent (stream);
+                (var torrentDict, var infoHashes) = BEncodedDictionary.DecodeTorrent (stream);
                 return new Torrent (torrentDict, infoHashes);
             } catch (BEncodingException ex) {
                 throw new TorrentException ("Invalid torrent file specified", ex);
