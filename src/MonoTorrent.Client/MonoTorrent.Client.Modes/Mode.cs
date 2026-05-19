@@ -54,6 +54,7 @@ namespace MonoTorrent.Client.Modes
         static readonly Logger logger = Logger.Create (nameof (Mode));
 
         bool hashingPendingFiles;
+        bool shouldHashPendingFiles;
         ValueStopwatch lastSendHaveMessage;
         ValueStopwatch lastRefreshAllPeers;
 
@@ -79,11 +80,13 @@ namespace MonoTorrent.Client.Modes
             Settings = settings ?? throw new ArgumentNullException (nameof (settings));
 
             Unchoker = unchoker ?? new ChokeUnchokeManager (new TorrentManagerUnchokeable (manager));
+
+            shouldHashPendingFiles = true;
         }
 
         public virtual void HandleFilePriorityChanged (ITorrentManagerFile file, Priority oldPriority)
         {
-
+            shouldHashPendingFiles = true;
         }
 
         public void HandleMessage (PeerId id, PeerMessage message, PeerMessage.Releaser releaser)
@@ -762,10 +765,12 @@ namespace MonoTorrent.Client.Modes
             // This adds a little bit of a double meaning to the property (for now).
             // Any mode which doesn't allow processing peer messages also does not allow
             // partial hashing.
-            if (hashingPendingFiles || !Manager.HasMetadata || !CanHandleMessages)
+            if (!shouldHashPendingFiles || hashingPendingFiles || !Manager.HasMetadata || !CanHandleMessages)
                 return;
 
-            // FIXME: Handle errors from DiskManager and also handle cancellation if the Mode is replaced.
+            // We need two bools. These are two prevent double-execution, but also to ensure that if something changes
+            // while we're in the middle of hashing pending files we know we need to retry during the next tick.
+            shouldHashPendingFiles = false;
             hashingPendingFiles = true;
             try {
                 using var hashBuffer = MemoryPool.Default.Rent (Manager.InfoHashes.GetMaxByteCount (), out Memory<byte> hashMemory);
