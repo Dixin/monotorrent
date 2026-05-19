@@ -691,27 +691,32 @@ namespace MonoTorrent.Client
             if (!ContainingDirectory.StartsWith (SavePath))
                 throw new InvalidOperationException ($"The containing directory path '{ContainingDirectory}' must be a subdirectory of '{SavePath}'.");
 
+            // No need to check each individual file if the containing directory doesn't even exist.
+            bool anyExists = Directory.Exists (ContainingDirectory);
+
             // All files marked as 'Normal' priority by default so 'PartialProgressSelector'
             // should be set to 'true' for each piece as all files are being downloaded.
             Files = Torrent.Files.Select (file => {
-
                 // Generate the paths when 'UsePartialFiles' is enabled.
                 var paths = TorrentFileInfo.GetNewPaths (Path.Combine (ContainingDirectory, TorrentFilePathEscaper.PathAndFileNameEscape (file.Path)), usePartialFiles: true, isComplete: true);
                 var downloadCompleteFullPath = paths.completePath;
                 var downloadIncompleteFullPath = paths.incompletePath;
 
+                bool completeExists = anyExists && File.Exists (downloadCompleteFullPath);
+                bool incompleteExists = anyExists && File.Exists (downloadIncompleteFullPath);
+
                 // FIXME: Is this the best place to futz with actually moving files?
                 if (!Engine!.Settings.UsePartialFiles) {
-                    if (File.Exists (downloadIncompleteFullPath) && !File.Exists (downloadCompleteFullPath))
+                    if (incompleteExists && !completeExists)
                         File.Move (downloadIncompleteFullPath, downloadCompleteFullPath);
 
                     downloadIncompleteFullPath = downloadCompleteFullPath;
                 }
 
                 var currentPath = Engine!.Settings.UsePartialFiles ? downloadIncompleteFullPath : downloadCompleteFullPath;
-                if (File.Exists (downloadCompleteFullPath))
+                if (completeExists)
                     currentPath = downloadCompleteFullPath;
-                else if (File.Exists (downloadIncompleteFullPath))
+                else if (incompleteExists)
                     currentPath = downloadIncompleteFullPath;
 
                 var torrentFileInfo = new TorrentFileInfo (file, currentPath);
