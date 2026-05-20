@@ -384,6 +384,27 @@ namespace MonoTorrent.Client
         }
 
         [Test]
+        public async Task MinInternal ()
+        {
+            // Just have one tier as it's easier to reason about.
+            trackerManager = new TrackerManager (Factories, new RequestFactory (), new List<IEnumerable<string>> { trackerUrls[0] }, true);
+            trackers = trackerManager.Tiers.Select (t => t.Trackers.Cast<CustomTracker> ().ToList ()).ToList ();
+
+            var tcs = new TaskCompletionSource<object> ();
+            var announces = new List<AnnounceResponseEventArgs> ();
+            trackerManager.AnnounceComplete += (o, e) => {
+                tcs.SetResult (null);
+            };
+            trackers[0][0].Connection.CustomResponse = new AnnounceResponse (TrackerState.Ok, new Dictionary<InfoHash, IList<PeerInfo>> (), TimeSpan.FromHours (1), TimeSpan.FromHours (2), null, null, null);
+
+            await trackerManager.AnnounceAsync (CancellationToken.None).WithTimeout ();
+            Assert.IsFalse (trackerManager.Tiers[0].CanSendAnnounce (TorrentEvent.None));
+            Assert.AreEqual (trackerManager.Tiers[0].ActiveTracker, trackerManager.Tiers[0].Trackers[0]);
+            Assert.AreEqual (TimeSpan.FromHours (1), trackerManager.Tiers[0].ActiveTracker.MinUpdateInterval);
+            Assert.AreEqual (TimeSpan.FromHours (2), trackerManager.Tiers[0].ActiveTracker.UpdateInterval);
+        }
+
+        [Test]
         public async Task ScrapePrimary ()
         {
             var argsTask = new TaskCompletionSource<ScrapeResponseEventArgs> ();

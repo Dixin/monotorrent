@@ -253,6 +253,9 @@ namespace MonoTorrent.Client
             await testWriter.CreateAsync (manager.Files);
 
             Assert.IsTrue (manager.HashChecked);
+
+            if (File.Exists (manager.Files[0].FullPath))
+                File.Delete (manager.Files[0].FullPath);
             manager.Engine.DiskManager.GetHashAsyncOverride = (torrent, pieceIndex, dest) => {
                 first.SetResult (null);
                 new byte[20].CopyTo (dest.V1Hash);
