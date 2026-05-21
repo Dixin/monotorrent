@@ -97,7 +97,7 @@ namespace MonoTorrent.Dht
                 TransactionId = transactionId
             };
             listener.MessageSent += (data, endpoint) => {
-                engine.MessageLoop.DhtMessageFactory.TryDecodeMessage (BEncodedValue.Decode<BEncodedDictionary> (data.Span), out DhtMessage message);
+                engine.MessageLoop.DhtMessageFactory.TryDecodeMessage (BEncodedValue.Decode<BEncodedDictionary> (data.Span), node.EndPoint, out DhtMessage message);
                 if (message is Ping && message.TransactionId.Equals (ping.TransactionId)) {
                     counter++;
                     PingResponse response = new PingResponse (node.Id, transactionId);
@@ -129,7 +129,7 @@ namespace MonoTorrent.Dht
             b.Nodes[5].Seen (TimeSpan.FromDays (3));
 
             listener.MessageSent += (data, endpoint) => {
-                engine.MessageLoop.DhtMessageFactory.TryDecodeMessage (BEncodedValue.Decode<BEncodedDictionary> (data.Span), out DhtMessage message);
+                engine.MessageLoop.DhtMessageFactory.TryDecodeMessage (BEncodedValue.Decode<BEncodedDictionary> (data.Span), endpoint, out DhtMessage message);
 
                 b.Nodes.Sort ((l, r) => l.LastSeen.CompareTo (r.LastSeen));
                 if ((endpoint.Port == 3 && nodeCount == 0) ||
@@ -138,7 +138,7 @@ namespace MonoTorrent.Dht
                     Node n = b.Nodes.Find (no => no.EndPoint.Port == endpoint.Port);
                     n.Seen ();
                     PingResponse response = new PingResponse (n.Id, message.TransactionId);
-                    listener.RaiseMessageReceived (response, node.EndPoint);
+                    listener.RaiseMessageReceived (response, n.EndPoint);
                     nodeCount++;
                 }
 
@@ -156,7 +156,7 @@ namespace MonoTorrent.Dht
                 nodes.Add (new Node (NodeId.Create (), new IPEndPoint (IPAddress.Any, i)));
 
             listener.MessageSent += (data, endpoint) => {
-                engine.MessageLoop.DhtMessageFactory.TryDecodeMessage (BEncodedValue.Decode<BEncodedDictionary> (data.Span), out DhtMessage message);
+                engine.MessageLoop.DhtMessageFactory.TryDecodeMessage (BEncodedValue.Decode<BEncodedDictionary> (data.Span), node.EndPoint, out DhtMessage message);
 
                 Node current = nodes.Find (n => n.EndPoint.Port.Equals (endpoint.Port));
                 if (current == null)

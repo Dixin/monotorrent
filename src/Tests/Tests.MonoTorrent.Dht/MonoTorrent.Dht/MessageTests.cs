@@ -28,6 +28,8 @@
 
 
 using System;
+using System.IO;
+using System.Net;
 using System.Text;
 
 using MonoTorrent.BEncoding;
@@ -166,13 +168,25 @@ namespace MonoTorrent.Dht
         {
             // Register the query as being sent so we can decode the response
             AnnouncePeerDecode ();
-            DhtMessageFactory.RegisterSend (message);
+            DhtMessageFactory.RegisterSend (message, new IPEndPoint (IPAddress.Any, 1));
             string text = "d1:rd2:id20:mnopqrstuvwxyz123456e1:t2:aa1:y1:re";
 
-            AnnouncePeerResponse m = (AnnouncePeerResponse) Decode (text);
+            AnnouncePeerResponse m = (AnnouncePeerResponse) Decode (text, new IPEndPoint (IPAddress.Any, 1));
             Assert.AreEqual (infohash, m.Id, "#1");
 
             Compare (m, text);
+        }
+
+        [Test]
+        public void AnnouncePeerResponse_Unregistered ()
+        {
+            // The message was reigstered to a different ip  / port
+            AnnouncePeerDecode ();
+            DhtMessageFactory.RegisterSend (message, new IPEndPoint (IPAddress.Loopback, 1));
+            string text = "d1:rd2:id20:mnopqrstuvwxyz123456e1:t2:aa1:y1:re";
+
+            Assert.Throws<MessageException> (() => Decode (text, new IPEndPoint (IPAddress.Broadcast, 1)));
+            Assert.Throws<MessageException> (() => Decode (text, new IPEndPoint (IPAddress.Loopback, 2)));
         }
 
         [Test]
@@ -190,9 +204,9 @@ namespace MonoTorrent.Dht
         public void FindNodeResponseDecode ()
         {
             FindNodeEncode ();
-            DhtMessageFactory.RegisterSend (message);
+            DhtMessageFactory.RegisterSend (message, new IPEndPoint (IPAddress.Any, 5));
             string text = "d1:rd2:id20:abcdefghij01234567895:nodes9:def456...e1:t2:aa1:y1:re";
-            FindNodeResponse m = (FindNodeResponse) Decode (text);
+            FindNodeResponse m = (FindNodeResponse) Decode (text, new IPEndPoint (IPAddress.Any, 5));
 
             Assert.AreEqual (id, m.Id, "#1");
             Assert.AreEqual ((BEncodedString) "def456...", m.Nodes, "#2");
@@ -218,10 +232,10 @@ namespace MonoTorrent.Dht
         public void GetPeersResponseDecode ()
         {
             GetPeersEncode ();
-            DhtMessageFactory.RegisterSend (message);
+            DhtMessageFactory.RegisterSend (message, new IPEndPoint (IPAddress.Any, 5));
 
             string text = "d1:rd2:id20:abcdefghij01234567895:token8:aoeusnth6:valuesl6:axje.u6:idhtnmee1:t2:aa1:y1:re";
-            GetPeersResponse m = (GetPeersResponse) Decode (text);
+            GetPeersResponse m = (GetPeersResponse) Decode (text, new IPEndPoint (IPAddress.Any, 5));
 
             Assert.AreEqual (token, m.Token, "#1");
             Assert.AreEqual (id, m.Id, "#2");
@@ -249,10 +263,10 @@ namespace MonoTorrent.Dht
         public void PingResponseDecode ()
         {
             PingEncode ();
-            DhtMessageFactory.RegisterSend (message);
+            DhtMessageFactory.RegisterSend (message, new IPEndPoint (IPAddress.Any, 5));
 
             string text = "d1:rd2:id20:mnopqrstuvwxyz123456e1:t2:aa1:y1:re";
-            PingResponse m = (PingResponse) Decode (text);
+            PingResponse m = (PingResponse) Decode (text, new IPEndPoint (IPAddress.Any, 5));
 
             Assert.AreEqual (infohash, m.Id);
 
@@ -269,9 +283,12 @@ namespace MonoTorrent.Dht
         }
 
         private DhtMessage Decode (string p)
+            => Decode (p, null);
+
+        private DhtMessage Decode (string p, IPEndPoint endPoint)
         {
             byte[] buffer = Encoding.UTF8.GetBytes (p);
-            return DhtMessageFactory.DecodeMessage (BEncodedValue.Decode<BEncodedDictionary> (buffer));
+            return DhtMessageFactory.DecodeMessage (BEncodedValue.Decode<BEncodedDictionary> (buffer), endPoint);
         }
     }
 }

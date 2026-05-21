@@ -160,7 +160,7 @@ namespace MonoTorrent.Dht
             // FIXME: This should throw an exception if the message doesn't exist, we need to handle this
             // and return an error message (if that's what the spec allows)
             try {
-                if (DhtMessageFactory.TryDecodeMessage ((BEncodedDictionary) BEncodedValue.Decode (buffer.Span), out DhtMessage? message)) {
+                if (DhtMessageFactory.TryDecodeMessage ((BEncodedDictionary) BEncodedValue.Decode (buffer.Span), endpoint, out DhtMessage? message)) {
                     Monitor.ReceiveMonitor.AddDelta (buffer.Length);
                     ReceiveQueue.Enqueue (new KeyValuePair<IPEndPoint, DhtMessage> (endpoint, message!));
                 }
@@ -252,7 +252,7 @@ namespace MonoTorrent.Dht
         {
             DhtEngine.MainLoop.CheckThread ();
 
-            DhtMessageFactory.UnregisterSend ((QueryMessage) v.Message);
+            DhtMessageFactory.UnregisterSend ((QueryMessage) v.Message, v.Destination);
             WaitingResponse.Remove (v.Message.TransactionId!);
 
             v.CompletionSource?.TrySetResult (new SendQueryEventArgs (v.Node!, v.Destination, (QueryMessage) v.Message));
@@ -346,12 +346,12 @@ namespace MonoTorrent.Dht
                     throw new ArgumentException ("Message must have a transaction id");
                 do {
                     message.TransactionId = TransactionId.NextId ();
-                } while (DhtMessageFactory.IsRegistered (message.TransactionId));
+                } while (DhtMessageFactory.IsRegistered (message.TransactionId, endpoint));
             }
 
             // We need to be able to cancel a query message if we time out waiting for a response
             if (message is QueryMessage)
-                DhtMessageFactory.RegisterSend ((QueryMessage) message);
+                DhtMessageFactory.RegisterSend ((QueryMessage) message, endpoint);
 
             SendQueue.Enqueue (new SendDetails (node, endpoint, message, tcs));
         }
