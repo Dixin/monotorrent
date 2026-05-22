@@ -100,7 +100,8 @@ namespace MonoTorrent.PiecePicking
 
     public partial class StandardPicker : IPiecePicker
     {
-        static ICache<Piece> PieceCache { get; } = new SynchronizedCache<Piece> (() => new Piece ());
+        // Every torrent has data of a different size. We should cache the block array and piece data in an instance variable.
+        ICache<Piece> PieceCache { get; set; }
 
         // static readonly Logger logger = Logger.Create (nameof(StandardPicker));
 
@@ -110,6 +111,7 @@ namespace MonoTorrent.PiecePicking
 
         public StandardPicker ()
         {
+            PieceCache = new Cache<Piece> (() => new Piece ());
         }
 
         public int CancelRequests (IRequester peer, int startIndex, int endIndex, Span<PieceSegment> cancellations)
@@ -135,7 +137,7 @@ namespace MonoTorrent.PiecePicking
 
         void CancelRequests (IRequester peer, Piece piece, ref Span<PieceSegment> cancellations)
         {
-            foreach (ref Block block in piece.Blocks.AsSpan ()) {
+            foreach (ref Block block in piece.Blocks) {
                 if (!block.Received && block.RequestedOff == peer) {
                     block.CancelRequest ();
                     piece.Abandoned = true;
@@ -212,6 +214,7 @@ namespace MonoTorrent.PiecePicking
 
             CanRequestBitField = new BitField (TorrentData.PieceCount);
             Requests = new PickedPieces (TorrentData.PieceCount);
+            PieceCache = new Cache<Piece> (() => new Piece ());
         }
 
         public bool IsInteresting (IRequester peer, ReadOnlyBitField bitfield)
@@ -246,15 +249,6 @@ namespace MonoTorrent.PiecePicking
             // Now we see what pieces the peer has that we don't have and try and request one
             return GetStandardRequest (peer, available, startIndex, endIndex, requests);
         }
-
-        public void Reset ()
-        {
-            if (TorrentData != null)
-                Requests = new PickedPieces (TorrentData.PieceCount);
-        }
-
-        static readonly Func<Piece, int, int> IndexComparer = (Piece piece, int comparand)
-            => piece.Index.CompareTo (comparand);
 
         public bool ValidatePiece (IRequester peer, PieceSegment request, out bool pieceComplete, HashSet<IRequester> peersInvolved)
         {
@@ -340,7 +334,7 @@ namespace MonoTorrent.PiecePicking
                 return false;
 
             if (Requests.TryGetMostRecentRequest (peer, out Piece? mostRecent)) {
-                foreach (ref Block block in mostRecent.Blocks.AsSpan ())
+                foreach (ref Block block in mostRecent.Blocks)
                     if (!block.Requested && !block.Received) {
                         segment = block.CreateRequest (peer);
                         return true;
@@ -361,7 +355,7 @@ namespace MonoTorrent.PiecePicking
                 // For each piece that was assigned to this peer, try to request a block from it
                 // A piece is 'assigned' to a peer if he is the first person to request a block from that piece
                 if (allowAny || (allowAbandoned && p.Abandoned) || peer == p.Blocks[0].RequestedOff) {
-                    foreach (ref Block block in p.Blocks.AsSpan ()) {
+                    foreach (ref Block block in p.Blocks) {
                         if (!block.Requested && !block.Received) {
                             segment = block.CreateRequest (peer);
                             return true;
