@@ -99,6 +99,7 @@ namespace MonoTorrent.Client.Modes
             //If download is fully complete, set state to 'Seeding' and send an announce to the tracker.
             if (Manager.Complete && state == TorrentState.Downloading) {
                 state = TorrentState.Seeding;
+                Manager.PieceManager.Initialise ();
                 await Task.WhenAll (
                     Manager.TrackerManager.AnnounceAsync (TorrentEvent.Completed, CancellationToken.None).AsTask (),
                     Manager.MaybeWriteFastResumeAsync ().AsTask (),
