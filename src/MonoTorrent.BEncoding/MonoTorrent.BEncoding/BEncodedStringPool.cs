@@ -154,16 +154,16 @@ namespace MonoTorrent.BEncoding
             Hardcoded.TryGetOrAddValue ("v"u8, out var _);
             Hardcoded.TryGetOrAddValue ("y"u8, out var _);
 
-            Instance = new BEncodedStringPool (null);
+            Instance = new BEncodedStringPool (null, null);
         }
 
         public BEncodedStringPool (IMemoryOwner<byte>? buffer)
-            : this (new Lookup (), buffer)
+            : this (buffer, new Lookup ())
         {
 
         }
 
-        BEncodedStringPool (Lookup? dynamic, IMemoryOwner<byte>? interningBuffer)
+        BEncodedStringPool (IMemoryOwner<byte>? interningBuffer, Lookup? dynamic)
         {
             if (interningBuffer is null)
                 interningBuffer = MemoryPool<byte>.Shared.Rent (Hardcoded.MaxLength);
