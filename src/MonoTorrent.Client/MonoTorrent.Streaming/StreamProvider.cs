@@ -122,10 +122,10 @@ namespace MonoTorrent.Streaming
 
                     ActiveStream.Seek (0, SeekOrigin.Begin);
                     await ActiveStream.ReadAsync (new byte[1], 0, 1, tcs.Token);
-                } else {
-                    tcs.Token.ThrowIfCancellationRequested ();
-                    ActiveStream.Seek (0, SeekOrigin.Begin);
                 }
+
+                tcs.Token.ThrowIfCancellationRequested ();
+                ActiveStream.Seek (0, SeekOrigin.Begin);
             } catch {
                 ActiveStream?.Dispose ();
                 throw;
