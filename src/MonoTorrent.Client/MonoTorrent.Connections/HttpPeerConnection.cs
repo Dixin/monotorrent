@@ -135,7 +135,7 @@ namespace MonoTorrent.Connections.Peer
 
         long DataStreamCount { get; set; }
 
-        WebResponse? DataStreamResponse { get; set; }
+        HttpResponseMessage? CurrentResponse { get; set; }
 
         public IPEndPoint? EndPoint { get; } = null;
 
@@ -241,10 +241,9 @@ namespace MonoTorrent.Connections.Peer
                 DataStreamCount -= result;
                 // If result is zero it means we've read the last data from the stream.
                 if (result == 0) {
-                    using (DataStreamResponse)
-                        DataStream.Dispose ();
-
-                    DataStreamResponse = null;
+                    CurrentResponse?.Dispose ();
+                    CurrentResponse = null;
+                    DataStream.Dispose ();
                     DataStream = null;
 
                     // If we requested more data (via the range header) than we were actually given, then it's a truncated
@@ -263,10 +262,9 @@ namespace MonoTorrent.Connections.Peer
                             CurrentRequest = new HttpRequestData (RequestMessages[0]);
                             RequestMessages.RemoveAt (0);
                         } else {
-                            using (DataStreamResponse)
-                                DataStream.Dispose ();
-
-                            DataStreamResponse = null;
+                            CurrentResponse?.Dispose ();
+                            CurrentResponse = null;
+                            DataStream.Dispose ();
                             DataStream = null;
 
                             CurrentRequest = null;
@@ -283,16 +281,26 @@ namespace MonoTorrent.Connections.Peer
             while (WebRequests.Count > 0) {
                 var rr = WebRequests.Dequeue ();
 
-                Requester?.Dispose ();
                 if (rr.fileUri == PaddingFileUri) {
                     DataStream = new ZeroStream ();
                     DataStreamCount = rr.count;
                 } else {
-                    Requester = RequestCreator.CreateHttpClient ();
+                    // Reuse the existing HttpClient rather than disposing and recreating it.
+                    // HttpClient is designed to be long-lived; recreating it per-request defeats
+                    // connection pooling and causes RedirectHandler to re-buffer response bodies.
+                    if (Requester == null) {
+                        Requester = RequestCreator.CreateHttpClient ();
+                        Requester.Timeout = ConnectionTimeout;
+                    }
                     var msg = new HttpRequestMessage (HttpMethod.Get, rr.fileUri);
                     msg.Headers.Range = new System.Net.Http.Headers.RangeHeaderValue (rr.startOffset, rr.startOffset + rr.count - 1);
-                    Requester.Timeout = ConnectionTimeout;
-                    DataStream = await (await Requester.SendAsync (msg)).Content.ReadAsStreamAsync ();
+
+                    // If EnsureSuccessStatusCode raises an error then (eventually) the CurrentResponse will be
+                    // disposed anyway as Dispose will be called on this instance.
+                    CurrentResponse = await Requester.SendAsync (msg, HttpCompletionOption.ResponseHeadersRead);
+                    CurrentResponse.EnsureSuccessStatusCode ();
+
+                    DataStream = await CurrentResponse.Content.ReadAsStreamAsync ();
                     DataStreamCount = rr.count;
                 }
                 return await ReceiveAsync (socketBuffer) + written;
@@ -416,11 +424,11 @@ namespace MonoTorrent.Connections.Peer
 
             Requester?.Dispose ();
             SendResult?.TrySetCanceled ();
-            DataStreamResponse?.Dispose ();
+            CurrentResponse?.Dispose ();
             DataStream?.Dispose ();
             ReceiveWaiter.Set ();
 
-            DataStreamResponse = null;
+            CurrentResponse = null;
             DataStream = null;
         }
     }
