@@ -87,14 +87,19 @@ namespace MonoTorrent.Dht
         internal BEncodedString CompactPort ()
         {
             byte[] buffer = new byte[6];
-            CompactPort (buffer);
+            if (CompactPort (buffer) != buffer.Length)
+                throw new InvalidOperationException ("Couldn't write the address to the provided buffer");
             return new BEncodedString (buffer);
         }
 
-        internal void CompactPort (Span<byte> buffer)
+        internal int CompactPort (Span<byte> buffer)
         {
-            Message.Write (ref buffer, EndPoint.Address.GetAddressBytes ());
-            Message.Write (ref buffer, (ushort) EndPoint.Port);
+            var b = buffer;
+            if (!EndPoint.Address.TryWriteBytes (b, out int written))
+                return written;
+            b = b.Slice (written);
+            Message.Write (ref b, (ushort) EndPoint.Port);
+            return buffer.Length - b.Length;
         }
 
         internal static BEncodedString CompactPort (IList<Node> peers)
