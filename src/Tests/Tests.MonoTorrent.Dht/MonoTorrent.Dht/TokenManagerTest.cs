@@ -53,6 +53,14 @@ namespace MonoTorrent.Dht
         }
 
         [Test]
+        public void CanGenerateToken ([Values("::1", "127.0.0.1")] string ipAddress)
+        {
+            var node = new Node (NodeId.Create (), new IPEndPoint (IPAddress.Parse (ipAddress), 25));
+            var token = manager.GenerateToken (node);
+            Assert.IsTrue (manager.VerifyToken (node, token));
+        }
+
+        [Test]
         public void InvalidateOldTokens ()
         {
             Assert.IsTrue (manager.VerifyToken (node, token), "#1");

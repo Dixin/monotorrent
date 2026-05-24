@@ -96,7 +96,7 @@ namespace MonoTorrent.Dht
         {
             var b = buffer;
             if (!EndPoint.Address.TryWriteBytes (b, out int written))
-                return written;
+                throw new InvalidOperationException ("Couldn't write the address to the provided buffer");
             b = b.Slice (written);
             Message.Write (ref b, (ushort) EndPoint.Port);
             return buffer.Length - b.Length;
