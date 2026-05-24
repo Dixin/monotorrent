@@ -43,7 +43,7 @@ namespace MonoTorrent.Dht
         public void CompactPort ()
         {
             Node n = new Node (NodeId.Create (), new IPEndPoint (IPAddress.Parse ("1.21.121.3"), 511));
-            BEncodedString port = n.CompactPort ();
+            BEncodedString port = n.CompactEndPoint ();
             Assert.AreEqual (1, port.Span[0], "#1");
             Assert.AreEqual (21, port.Span[1], "#1");
             Assert.AreEqual (121, port.Span[2], "#1");

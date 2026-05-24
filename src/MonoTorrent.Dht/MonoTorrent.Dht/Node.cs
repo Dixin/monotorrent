@@ -84,15 +84,15 @@ namespace MonoTorrent.Dht
             LastSeenTimer.Restart ();
         }
 
-        internal BEncodedString CompactPort ()
+        internal BEncodedString CompactEndPoint ()
         {
             byte[] buffer = new byte[6];
-            if (CompactPort (buffer) != buffer.Length)
+            if (CompactEndPoint (buffer) != buffer.Length)
                 throw new InvalidOperationException ("Couldn't write the address to the provided buffer");
             return new BEncodedString (buffer);
         }
 
-        internal int CompactPort (Span<byte> buffer)
+        internal int CompactEndPoint (Span<byte> buffer)
         {
             var b = buffer;
             if (!EndPoint.Address.TryWriteBytes (b, out int written))
@@ -102,11 +102,11 @@ namespace MonoTorrent.Dht
             return buffer.Length - b.Length;
         }
 
-        internal static BEncodedString CompactPort (IList<Node> peers)
+        internal static BEncodedString CompactEndPoint (IList<Node> peers)
         {
             var buffer = new byte[peers.Count * 6];
             for (int i = 0; i < peers.Count; i++)
-                peers[i].CompactPort (buffer.AsSpan (i * 6, 6));
+                peers[i].CompactEndPoint (buffer.AsSpan (i * 6, 6));
 
             return new BEncodedString (buffer);
         }
@@ -121,7 +121,7 @@ namespace MonoTorrent.Dht
         void CompactNode (Span<byte> buffer)
         {
             Message.Write (ref buffer, Id.Span);
-            CompactPort (buffer);
+            CompactEndPoint (buffer);
         }
 
         internal static BEncodedString CompactNode (ICollection<Node> nodes)

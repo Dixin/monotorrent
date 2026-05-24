@@ -62,7 +62,7 @@ namespace MonoTorrent.Dht
             // IPv6 compact details are 18 bytes, the secret is 10 bytes.
             Span<byte> hashBuffer = stackalloc byte[28];
 
-            int written = node.CompactPort (hashBuffer);
+            int written = node.CompactEndPoint (hashBuffer);
             secret.CopyTo (hashBuffer.Slice (written));
 
             if (!SHA1.TryHashData (

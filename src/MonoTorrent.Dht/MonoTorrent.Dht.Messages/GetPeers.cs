@@ -72,7 +72,7 @@ namespace MonoTorrent.Dht.Messages
             if (engine.Torrents.ContainsKey (InfoHash)) {
                 var list = new BEncodedList ();
                 foreach (Node n in engine.Torrents[InfoHash])
-                    list.Add (n.CompactPort ());
+                    list.Add (n.CompactEndPoint ());
                 response.Values = list;
             } else {
                 response.Nodes = Node.CompactNode (engine.RoutingTable.GetClosest (InfoHash));
