@@ -105,7 +105,7 @@ namespace MonoTorrent.Dht
         /// This is the list of messages which have been sent but no response (or error) has
         /// been received yet. The key for the dictionary is the TransactionId for the Query.
         /// </summary>
-        Dictionary<BEncodedValue, SendDetails> WaitingResponse { get; }
+        Dictionary<(BEncodedValue, IPEndPoint), SendDetails> WaitingResponse { get; }
 
         /// <summary>
         /// Temporary (re-usable) storage when cancelling timed out messages.
@@ -121,7 +121,7 @@ namespace MonoTorrent.Dht
             ReceiveQueue = new Queue<KeyValuePair<IPEndPoint, DhtMessage>> ();
             SendQueue = new Queue<SendDetails> ();
             Timeout = TimeSpan.FromSeconds (15);
-            WaitingResponse = new Dictionary<BEncodedValue, SendDetails> ();
+            WaitingResponse = new Dictionary<(BEncodedValue, IPEndPoint), SendDetails> ();
             WaitingResponseTimedOut = new List<SendDetails> ();
 
             Task? sendTask = null;
@@ -156,9 +156,6 @@ namespace MonoTorrent.Dht
             if (Listener.Status == ListenerStatus.NotListening)
                 return;
 
-            // I should check the IP address matches as well as the transaction id
-            // FIXME: This should throw an exception if the message doesn't exist, we need to handle this
-            // and return an error message (if that's what the spec allows)
             try {
                 if (DhtMessageFactory.TryDecodeMessage ((BEncodedDictionary) BEncodedValue.Decode (buffer.Span), endpoint, out DhtMessage? message)) {
                     Monitor.ReceiveMonitor.AddDelta (buffer.Length);
@@ -197,7 +194,7 @@ namespace MonoTorrent.Dht
                         Logger.Error ("Transaction id was unexpectedly missing while sending messages");
                         return;
                     }
-                    WaitingResponse.Add (details.Message.TransactionId, details);
+                    WaitingResponse.Add ((details.Message.TransactionId, details.Destination), details);
                 }
 
                 ReadOnlyMemory<byte> buffer = details.Message.Encode ();
@@ -237,7 +234,7 @@ namespace MonoTorrent.Dht
         {
             DhtEngine.MainLoop.CheckThread ();
 
-            foreach (KeyValuePair<BEncodedValue, SendDetails> v in WaitingResponse) {
+            foreach (KeyValuePair<(BEncodedValue, IPEndPoint), SendDetails> v in WaitingResponse) {
                 if (Timeout == TimeSpan.Zero || v.Value.SentAt.Elapsed > Timeout)
                     WaitingResponseTimedOut.Add (v.Value);
             }
@@ -253,7 +250,7 @@ namespace MonoTorrent.Dht
             DhtEngine.MainLoop.CheckThread ();
 
             DhtMessageFactory.UnregisterSend ((QueryMessage) v.Message, v.Destination);
-            WaitingResponse.Remove (v.Message.TransactionId!);
+            WaitingResponse.Remove ((v.Message.TransactionId!, v.Destination));
 
             v.CompletionSource?.TrySetResult (new SendQueryEventArgs (v.Node!, v.Destination, (QueryMessage) v.Message));
             RaiseMessageSent (v.Node!, v.Destination, (QueryMessage) v.Message);
@@ -286,9 +283,8 @@ namespace MonoTorrent.Dht
                 // remove it from our list before handling it as that could cause an exception to be
                 // thrown.
                 if (rawResponse is ResponseMessage || rawResponse is ErrorMessage) {
-                    if (!WaitingResponse.TryGetValue (responseTransactionId, out query))
+                    if (!WaitingResponse.Remove ((responseTransactionId, source), out query))
                         return;
-                    WaitingResponse.Remove (responseTransactionId);
                 }
 
                 node.Seen ();
