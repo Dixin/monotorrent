@@ -91,6 +91,8 @@ namespace MonoTorrent.Dht
         /// </summary>
         Queue<KeyValuePair<IPEndPoint, DhtMessage>> ReceiveQueue { get; }
 
+        Memory<byte> SendBuffer { get; set; }
+
         /// <summary>
         /// The list of messages which have been queued to send.
         /// </summary>
@@ -185,7 +187,7 @@ namespace MonoTorrent.Dht
 
         async Task SendMessages ()
         {
-            for (int i = 0; i < 5 && SendQueue.Count > 0; i++) {
+            for (int i = 0; i < 50 && SendQueue.Count > 0; i++) {
                 SendDetails details = SendQueue.Dequeue ();
 
                 details.SentAt = ValueStopwatch.StartNew ();
@@ -197,10 +199,13 @@ namespace MonoTorrent.Dht
                     WaitingResponse.Add ((details.Message.TransactionId, details.Destination), details);
                 }
 
-                ReadOnlyMemory<byte> buffer = details.Message.Encode ();
+                if (details.Message.ByteLength > SendBuffer.Length)
+                    SendBuffer = new byte[details.Message.ByteLength];
+
+                var written = details.Message.Encode (SendBuffer.Span);
                 try {
-                    Monitor.SendMonitor.AddDelta (buffer.Length);
-                    await Listener.SendAsync (buffer, details.Destination);
+                    Monitor.SendMonitor.AddDelta (written);
+                    await Listener.SendAsync (SendBuffer.Slice (0, written), details.Destination);
                 } catch {
                     TimeoutMessage (details);
                 }
