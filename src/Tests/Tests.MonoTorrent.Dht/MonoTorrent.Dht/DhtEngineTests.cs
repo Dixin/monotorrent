@@ -13,12 +13,12 @@ namespace MonoTorrent.Dht
     public class DhtEngineTests
     {
         [Test]
-        public void AddRawNodesBeforeStarting ()
+        public async Task AddRawNodesBeforeStarting ()
         {
             int count = 0;
             var engine = new DhtEngine ();
             engine.MessageLoop.QuerySent += (o, e) => count++;
-            engine.Add (new ReadOnlyMemory<byte>[] { new byte[100] });
+            await engine.AddAsync (new ReadOnlyMemory<byte>[] { new byte[100] });
             Assert.AreEqual (0, engine.MessageLoop.PendingQueries);
             Assert.AreEqual (0, count);
             Assert.AreEqual (0, engine.RoutingTable.CountNodes ());

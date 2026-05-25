@@ -801,13 +801,13 @@ namespace MonoTorrent.Client
         {
             await ClientEngine.MainLoop;
 
-            if (CanUseDht && Engine != null && (!LastDhtAnnounceTimer.IsRunning || LastDhtAnnounceTimer.Elapsed > Engine.DhtEngine.MinimumAnnounceInterval)) {
-                LastDhtAnnounce = DateTime.UtcNow;
-                LastDhtAnnounceTimer.Restart ();
-                if (InfoHashes.V2 != null)
-                    Engine.DhtEngine.GetPeers (InfoHashes.V2.Truncate ());
-                if (InfoHashes.V1 != null)
-                    Engine.DhtEngine.GetPeers (InfoHashes.V1);
+            if (CanUseDht && Engine != null && Engine.Dht.State == Dht.DhtState.Ready && (!LastDhtAnnounceTimer.IsRunning || LastDhtAnnounceTimer.Elapsed > Engine.DhtEngine.MinimumAnnounceInterval)) {
+                // There's a concurrency limit on querying DHT so only mark the torrent as 'announcing' to DHT
+                // if we get a slot. Otherwise it'll be attempted again during the next iteration.
+                if (Engine.DhtEngine.TryEnqueueGetPeers (InfoHashes, Mode.Token)) {
+                    LastDhtAnnounce = DateTime.UtcNow;
+                    LastDhtAnnounceTimer.Restart ();
+                }
             }
         }
 

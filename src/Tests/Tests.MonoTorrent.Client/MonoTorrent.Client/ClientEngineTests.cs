@@ -47,14 +47,15 @@ namespace MonoTorrent.Client
     public class ClientEngineTests
     {
         [Test]
-        public async Task AddPeers_Dht ()
+        public async Task AddPeers_Dht_Public ()
         {
             var dht = new ManualDhtEngine ();
             var factories = EngineHelpers.Factories.WithDhtCreator (() => dht);
             var settings = EngineHelpers.CreateSettings (dhtEndPoint: new IPEndPoint (IPAddress.Any, 1234));
 
             using var engine = new ClientEngine (settings, factories);
-            var manager = await engine.AddAsync (new MagnetLink (InfoHash.FromMemory (new byte[20])), "asd");
+
+            var manager = await engine.AddAsync (TestRig.CreatePublic (), "path", new TorrentSettings ());
 
             var tcs = new TaskCompletionSource<DhtPeersAdded> ();
             manager.PeersFound += (o, e) => {
@@ -73,16 +74,13 @@ namespace MonoTorrent.Client
         [Test]
         public async Task AddPeers_Dht_Private ()
         {
-            // You can't manually add peers to private torrents
-            using var rig = TestRig.CreateMultiFile (new TestWriter ());
-            var editor = new TorrentEditor (rig.TorrentDict) {
-                CanEditSecureMetadata = true,
-                Private = true
-            };
+            var dht = new ManualDhtEngine ();
+            var factories = EngineHelpers.Factories.WithDhtCreator (() => dht);
+            var settings = EngineHelpers.CreateSettings (dhtEndPoint: new IPEndPoint (IPAddress.Any, 1234));
 
-            var manager = await rig.Engine.AddAsync (editor.ToTorrent (), "path", new TorrentSettings ());
+            using var engine = new ClientEngine (settings, factories);
 
-            var dht = (ManualDhtEngine) rig.Engine.DhtEngine;
+            var manager = await engine.AddAsync (TestRig.CreatePrivate (), "path", new TorrentSettings ());
 
             var tcs = new TaskCompletionSource<DhtPeersAdded> ();
             manager.PeersFound += (o, e) => {
@@ -90,8 +88,8 @@ namespace MonoTorrent.Client
                     tcs.TrySetResult (args);
             };
 
-            var peer = rig.CreatePeer (false).Peer;
-            dht.RaisePeersFound (manager.InfoHashes.V1OrV2, new[] { peer.Info });
+            var peer = new PeerInfo (new Uri ("http://test.peer"));
+            dht.RaisePeersFound (manager.InfoHashes.V1OrV2, new[] { peer });
             var result = await tcs.Task.WithTimeout (TimeSpan.FromSeconds (5));
             Assert.AreEqual (0, result.NewPeers, "#2");
             Assert.AreEqual (0, result.ExistingPeers, "#3");
