@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
@@ -87,7 +88,10 @@ namespace ClientSample
 
             }
 
-            foreach (var manager in engine.Torrents) {
+
+            // Stop up to 20 concurrently. The announce to the tracker can take some time so run many in parallel.
+            await Parallel.ForEachAsync (engine.Torrents, new ParallelOptions { MaxDegreeOfParallelism = 20 }, async (manager, token) => {
+                await manager.StopAsync ();
                 var stoppingTask = manager.StopAsync ();
                 while (manager.State != TorrentState.Stopped) {
                     Console.WriteLine ("{0} is {1}", manager.Torrent.Name, manager.State);
@@ -96,7 +100,7 @@ namespace ClientSample
                 await stoppingTask;
                 if (engine.Settings.AutoSaveLoadFastResume)
                     Console.WriteLine ($"FastResume data for {manager.Torrent?.Name ?? manager.InfoHashes.V1?.ToHex () ?? manager.InfoHashes.V2?.ToHex ()} has been written to disk.");
-            }
+            });
 
             if (engine.Settings.AutoSaveLoadDhtCache)
                 Console.WriteLine ($"DHT cache has been written to disk.");
