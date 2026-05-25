@@ -627,6 +627,16 @@ namespace MonoTorrent.Client
             return editor.ToTorrent ();
         }
 
+        internal static Torrent CreatePublic ()
+        {
+            var dict = CreateTorrent (16 * 1024 * 8, TorrentFile.Create (16 * 1024 * 8, ("File", 16 * 1024 * 8)), null);
+            var editor = new TorrentEditor (dict) {
+                CanEditSecureMetadata = true,
+                Private = false,
+            };
+            return editor.ToTorrent ();
+        }
+
         internal static TestRig CreateSingleFile (long torrentSize, int pieceLength)
         {
             return CreateSingleFile (torrentSize, pieceLength, false);
