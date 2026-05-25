@@ -30,6 +30,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Web;
@@ -55,7 +56,8 @@ namespace MonoTorrent
         public static InfoHashes FromV2 (InfoHash infoHash)
             => new InfoHashes (null, infoHash);
 
-        public bool IsHybrid => !(V1 is null) && !(V2 is null);
+        [MemberNotNullWhen(true, nameof (V1), nameof (V2))]
+        public bool IsHybrid => V1 is not null && V2 is not null;
 
         /// <summary>
         /// The SHA1 hash of the torrent's 'info' dictionary. Used by V1 torrents and hybrid v1/v2 torrents.
@@ -111,7 +113,7 @@ namespace MonoTorrent
             => Equals (obj as InfoHashes);
 
         public bool Equals (InfoHashes? other)
-            => !(other is null)
+            => other is not null
             && other.V1 == V1
             && other.V2 == V2;
 
