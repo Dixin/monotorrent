@@ -124,7 +124,7 @@ namespace MonoTorrent.Dht
             });
         }
 
-        public async void Add (IEnumerable<ReadOnlyMemory<byte>> nodes)
+        public async ReusableTask AddAsync (IEnumerable<ReadOnlyMemory<byte>> nodes)
         {
             if (State == DhtState.NotReady) {
                 PendingNodes = Node.FromCompactNode (nodes);
@@ -143,14 +143,16 @@ namespace MonoTorrent.Dht
             }
         }
 
-        internal async Task Add (Node node)
+        internal async ReusableTask Add (Node node)
             => await SendQueryAsync (new Ping (RoutingTable.LocalNodeId), node);
 
-        public async void Announce (InfoHash infoHash, int port)
+        public async ReusableTask AnnounceAsync (InfoHash infoHash, int port)
         {
             CheckDisposed ();
             if (infoHash is null)
                 throw new ArgumentNullException (nameof (infoHash));
+            if (State != DhtState.Ready)
+                throw new InvalidOperationException ("You cannot 'Announce' while the dht table is initialising");
 
             try {
                 await MainLoop;
@@ -178,11 +180,13 @@ namespace MonoTorrent.Dht
             });
         }
 
-        public async void GetPeers (InfoHash infoHash)
+        public async ReusableTask GetPeersAsync (InfoHash infoHash)
         {
             CheckDisposed ();
             if (infoHash == null)
                 throw new ArgumentNullException (nameof (infoHash));
+            if (State != DhtState.Ready)
+                throw new InvalidOperationException ("You cannot 'GetPeers' while the dht table is initialising");
 
             try {
                 await MainLoop;
@@ -235,7 +239,7 @@ namespace MonoTorrent.Dht
                 await Task.WhenAll (refreshTasks).ConfigureAwait (false);
         }
 
-        public async Task<ReadOnlyMemory<byte>> SaveNodesAsync ()
+        public async ReusableTask<ReadOnlyMemory<byte>> SaveNodesAsync ()
         {
             await MainLoop;
 
@@ -276,19 +280,19 @@ namespace MonoTorrent.Dht
             return e;
         }
 
-        public Task StartAsync ()
+        public ReusableTask StartAsync ()
             => StartAsync (ReadOnlyMemory<byte>.Empty);
 
-        public Task StartAsync (ReadOnlyMemory<byte> initialNodes)
+        public ReusableTask StartAsync (ReadOnlyMemory<byte> initialNodes)
             => StartAsync (Node.FromCompactNode (BEncodedString.FromMemory (initialNodes)).Concat (PendingNodes), DefaultBootstrapRouters.ToArray ());
 
-        public Task StartAsync (params string[] bootstrapRouters)
+        public ReusableTask StartAsync (params string[] bootstrapRouters)
             => StartAsync (Array.Empty<Node> (), bootstrapRouters);
 
-        public Task StartAsync (ReadOnlyMemory<byte> initialNodes, params string[] bootstrapRouters)
+        public ReusableTask StartAsync (ReadOnlyMemory<byte> initialNodes, params string[] bootstrapRouters)
             => StartAsync (Node.FromCompactNode (BEncodedString.FromMemory (initialNodes)).Concat (PendingNodes), bootstrapRouters);
 
-        async Task StartAsync (IEnumerable<Node> nodes, string[] bootstrapRouters)
+        async ReusableTask StartAsync (IEnumerable<Node> nodes, string[] bootstrapRouters)
         {
             CheckDisposed ();
 
@@ -309,7 +313,7 @@ namespace MonoTorrent.Dht
             });
         }
 
-        public async Task StopAsync ()
+        public async ReusableTask StopAsync ()
         {
             await MainLoop;
 
@@ -337,7 +341,7 @@ namespace MonoTorrent.Dht
             await tcs.Task;
         }
 
-        public async Task SetListenerAsync (IDhtListener listener)
+        public async ReusableTask SetListenerAsync (IDhtListener listener)
         {
             await MainLoop;
             await MessageLoop.SetListener (listener);

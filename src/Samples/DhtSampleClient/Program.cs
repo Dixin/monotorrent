@@ -56,16 +56,16 @@ namespace ClientSample
             // Begin querying for a ubuntu torrent
             var infoHash = InfoHash.FromBase32 ("FKSPLJ7CBHSUWMUAHVBWOCLRYTEMVKQF");
 
-            // Kick off the firs search. Discovered peers will be returned via the 'PeersFound'
+            // Kick off the first search. Discovered peers will be returned via the 'PeersFound'
             // event in batches, as they're discovered.
-            engine.GetPeers (infoHash);
+            _ = engine.GetPeersAsync (infoHash);
 
             Console.Write ("Press enter to fetch some peers. press 'q' and enter to quit");
             while (Console.ReadLine () != "q") {
                 Console.WriteLine ("Getting some peers...");
 
                 // Get some peers for the torrent
-                engine.GetPeers (infoHash);
+                _ = engine.GetPeersAsync (infoHash);
                 for (int i = 0; i < 5; i++) {
                     Console.WriteLine ("Waiting: {0} seconds left", (30 - i));
                     System.Threading.Thread.Sleep (1000);

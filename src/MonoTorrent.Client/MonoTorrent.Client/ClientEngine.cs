@@ -219,9 +219,9 @@ namespace MonoTorrent.Client
 
         public ConnectionManager ConnectionManager { get; }
 
-        public IDht Dht { get; private set; }
+        public IDht Dht => DhtEngine;
 
-        internal IDhtEngine DhtEngine { get; private set; }
+        internal DhtEngineWrapper DhtEngine { get; private set; }
 
         IDhtListener DhtListener { get; set; }
 
@@ -336,11 +336,10 @@ namespace MonoTorrent.Client
             listenManager.SetListeners (PeerListeners);
 
             DhtListener = (settings.DhtEndPoint == null ? null : Factories.CreateDhtListener (settings.DhtEndPoint)) ?? new NullDhtListener ();
-            DhtEngine = (settings.DhtEndPoint == null ? null : Factories.CreateDht ()) ?? new NullDhtEngine ();
-            Dht = new DhtEngineWrapper (DhtEngine);
+            var engine = (settings.DhtEndPoint == null ? null : Factories.CreateDht ()) ?? new NullDhtEngine ();
+            DhtEngine = new DhtEngineWrapper (engine);
             DhtEngine.SetListenerAsync (DhtListener).GetAwaiter ().GetResult ();
 
-            DhtEngine.StateChanged += DhtEngineStateChanged;
             DhtEngine.PeersFound += DhtEnginePeersFound;
             LocalPeerDiscovery = new NullLocalPeerDiscovery ();
 
@@ -658,7 +657,7 @@ namespace MonoTorrent.Client
             manager.UploadLimiters.Add (uploadLimiters);
             if (DhtEngine != null && manager.Torrent?.Nodes != null && DhtEngine.State != DhtState.Ready) {
                 try {
-                    DhtEngine.Add (manager.Torrent.Nodes.OfType<BEncodedString> ().Select (t => t.AsMemory ()));
+                    DhtEngine.AddAsync (manager.Torrent.Nodes.OfType<BEncodedString> ().Select (t => t.AsMemory ()));
                 } catch {
                     // FIXME: Should log this somewhere, though it's not critical
                 }
@@ -668,15 +667,13 @@ namespace MonoTorrent.Client
         async Task RegisterDht (IDhtEngine engine)
         {
             if (DhtEngine != null) {
-                DhtEngine.StateChanged -= DhtEngineStateChanged;
                 DhtEngine.PeersFound -= DhtEnginePeersFound;
                 await DhtEngine.StopAsync ();
                 DhtEngine.Dispose ();
             }
-            DhtEngine = engine ?? new NullDhtEngine ();
-            Dht = new DhtEngineWrapper (DhtEngine);
 
-            DhtEngine.StateChanged += DhtEngineStateChanged;
+            DhtEngine = new DhtEngineWrapper (engine ?? new NullDhtEngine ());
+
             DhtEngine.PeersFound += DhtEnginePeersFound;
             if (IsRunning)
                 await DhtEngine.StartAsync (await MaybeLoadDhtNodes ());
@@ -717,28 +714,6 @@ namespace MonoTorrent.Client
                 // This is only used for unit testing to validate that even if the DHT engine
                 // finds peers for a private torrent, we will not add them to the manager.
                 manager.RaisePeersFound (new DhtPeersAdded (manager, 0, 0));
-            }
-        }
-
-        async void DhtEngineStateChanged (object? o, EventArgs e)
-        {
-            if (DhtEngine.State != DhtState.Ready)
-                return;
-
-            await MainLoop;
-            foreach (TorrentManager manager in allTorrents) {
-                if (!manager.CanUseDht)
-                    continue;
-
-                // IPV6: Also report to an ipv6 DHT node
-                if (manager.InfoHashes.V1 != null) {
-                    DhtEngine.Announce (manager.InfoHashes.V1, GetOverrideOrActualListenPort ("ipv4") ?? -1);
-                    DhtEngine.GetPeers (manager.InfoHashes.V1);
-                }
-                if (manager.InfoHashes.V2 != null) {
-                    DhtEngine.Announce (manager.InfoHashes.V2.Truncate (), GetOverrideOrActualListenPort ("ipv4") ?? -1);
-                    DhtEngine.GetPeers (manager.InfoHashes.V2.Truncate ());
-                }
             }
         }
 

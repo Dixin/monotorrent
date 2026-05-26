@@ -34,6 +34,8 @@ using System.Threading.Tasks;
 using MonoTorrent.Connections.Dht;
 using MonoTorrent.Dht;
 
+using ReusableTasks;
+
 namespace MonoTorrent.Client
 {
     public class ManualDhtEngine : IDhtEngine
@@ -48,22 +50,22 @@ namespace MonoTorrent.Client
         public event EventHandler<PeersFoundEventArgs> PeersFound;
         public event EventHandler StateChanged;
 
-        public void Add (IEnumerable<ReadOnlyMemory<byte>> nodes)
+        public ReusableTask AddAsync (IEnumerable<ReadOnlyMemory<byte>> nodes)
         {
-
+            return default;
         }
 
-        public void Announce (InfoHash infohash, int port)
+        public ReusableTask AnnounceAsync (InfoHash infohash, int port)
         {
-
+            return default;
         }
 
         public void Dispose ()
             => Disposed = true;
 
-        public void GetPeers (InfoHash infohash)
+        public ReusableTask GetPeersAsync (InfoHash infohash)
         {
-
+            return default;
         }
 
         public void RaisePeersFound (InfoHash infoHash, IList<PeerInfo> peers)
@@ -75,27 +77,27 @@ namespace MonoTorrent.Client
             StateChanged?.Invoke (this, EventArgs.Empty);
         }
 
-        public Task<ReadOnlyMemory<byte>> SaveNodesAsync ()
-            => Task.FromResult (ReadOnlyMemory<byte>.Empty);
+        public ReusableTask<ReadOnlyMemory<byte>> SaveNodesAsync ()
+            => ReusableTask.FromResult (ReadOnlyMemory<byte>.Empty);
 
-        public Task SetListenerAsync (IDhtListener listener)
+        public ReusableTask SetListenerAsync (IDhtListener listener)
         {
-            return Task.CompletedTask;
+            return ReusableTask.CompletedTask;
         }
 
-        public Task StartAsync ()
+        public ReusableTask StartAsync ()
             => StartAsync (null);
 
-        public Task StartAsync (ReadOnlyMemory<byte> initialNodes)
+        public ReusableTask StartAsync (ReadOnlyMemory<byte> initialNodes)
         {
             RaiseStateChanged (DhtState.Ready);
-            return Task.CompletedTask;
+            return ReusableTask.CompletedTask;
         }
 
-        public Task StopAsync ()
+        public ReusableTask StopAsync ()
         {
             RaiseStateChanged (DhtState.NotReady);
-            return Task.CompletedTask;
+            return ReusableTask.CompletedTask;
         }
     }
 }

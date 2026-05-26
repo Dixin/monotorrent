@@ -34,6 +34,8 @@ using System.Threading.Tasks;
 using MonoTorrent.Connections.Dht;
 using MonoTorrent.Dht;
 
+using ReusableTasks;
+
 namespace MonoTorrent.Client
 {
     class NullTransferMonitor : ITransferMonitor
@@ -66,14 +68,14 @@ namespace MonoTorrent.Client
 
         public DhtState State => DhtState.NotReady;
 
-        public void Add (IEnumerable<ReadOnlyMemory<byte>> nodes)
+        public ReusableTask AddAsync (IEnumerable<ReadOnlyMemory<byte>> nodes)
         {
-
+            return default;
         }
 
-        public void Announce (InfoHash infoHash, int port)
+        public ReusableTask AnnounceAsync (InfoHash infoHash, int port)
         {
-
+            return default;
         }
 
         public void Dispose ()
@@ -81,34 +83,34 @@ namespace MonoTorrent.Client
 
         }
 
-        public void GetPeers (InfoHash infoHash)
+        public ReusableTask GetPeersAsync (InfoHash infoHash)
         {
-
+            return default;
         }
 
-        public Task<ReadOnlyMemory<byte>> SaveNodesAsync ()
+        public ReusableTask<ReadOnlyMemory<byte>> SaveNodesAsync ()
         {
-            return Task.FromResult (ReadOnlyMemory<byte>.Empty);
+            return default;
         }
 
-        public Task SetListenerAsync (IDhtListener listener)
+        public ReusableTask SetListenerAsync (IDhtListener listener)
         {
-            return Task.CompletedTask;
+            return default;
         }
 
-        public Task StartAsync ()
+        public ReusableTask StartAsync ()
         {
-            return Task.CompletedTask;
+            return default;
         }
 
-        public Task StartAsync (ReadOnlyMemory<byte> initialNodes)
+        public ReusableTask StartAsync (ReadOnlyMemory<byte> initialNodes)
         {
-            return Task.CompletedTask;
+            return default;
         }
 
-        public Task StopAsync ()
+        public ReusableTask StopAsync ()
         {
-            return Task.CompletedTask;
+            return default;
         }
     }
 }
