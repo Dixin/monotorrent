@@ -338,7 +338,7 @@ namespace MonoTorrent.Client
             DhtListener = (settings.DhtEndPoint == null ? null : Factories.CreateDhtListener (settings.DhtEndPoint)) ?? new NullDhtListener ();
             var engine = (settings.DhtEndPoint == null ? null : Factories.CreateDht ()) ?? new NullDhtEngine ();
             DhtEngine = new DhtEngineWrapper (engine);
-            DhtEngine.SetListenerAsync (DhtListener).GetAwaiter ().GetResult ();
+            DhtEngine.SetListenerAsync (DhtListener).AsTask ().GetAwaiter ().GetResult ();
 
             DhtEngine.PeersFound += DhtEnginePeersFound;
             LocalPeerDiscovery = new NullLocalPeerDiscovery ();
