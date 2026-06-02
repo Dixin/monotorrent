@@ -39,27 +39,29 @@ namespace ClientSample
             if (!Directory.Exists (torrentsPath))
                 Directory.CreateDirectory (torrentsPath);
 
-            // For each file in the torrents path that is a .torrent file, load it into the engine.
-            foreach (string file in Directory.GetFiles (torrentsPath)) {
-                if (file.EndsWith (".torrent", StringComparison.OrdinalIgnoreCase)) {
+
+            int counter = 0;
+            await Parallel.ForEachAsync (Directory.GetFiles (torrentsPath, "*.torrent"),
+                new ParallelOptions { MaxDegreeOfParallelism = 100 },
+                async (file, cancellationToken) => {
+                    // EngineSettings.AutoSaveLoadFastResume is enabled, so any cached fast resume
+                    // data will be implicitly loaded. If fast resume data is found, the 'hash check'
+                    // phase of starting a torrent can be skipped.
+                    // 
+                    // TorrentSettingsBuilder can be used to modify the settings for this
+                    // torrent.
+                    var settingsBuilder = new TorrentSettingsBuilder {
+                        MaximumConnections = 60,
+                    };
                     try {
-                        // EngineSettings.AutoSaveLoadFastResume is enabled, so any cached fast resume
-                        // data will be implicitly loaded. If fast resume data is found, the 'hash check'
-                        // phase of starting a torrent can be skipped.
-                        // 
-                        // TorrentSettingsBuilder can be used to modify the settings for this
-                        // torrent.
-                        var settingsBuilder = new TorrentSettingsBuilder {
-                            MaximumConnections = 60,
-                        };
-                        var manager = await Engine.AddAsync (file, downloadsPath, settingsBuilder.ToSettings ());
-                        Console.WriteLine (manager.InfoHashes.V1OrV2.ToHex ());
-                    } catch (Exception e) {
-                        Console.Write ("Couldn't decode {0}: ", file);
-                        Console.WriteLine (e.Message);
+                        await Engine.AddAsync (file, downloadsPath, settingsBuilder.ToSettings ());
+                    } catch (Exception ex) {
+                        Console.WriteLine ("Couldn't load torrent {0}{1}{2}", file, Environment.NewLine, ex);
                     }
+                    if (Interlocked.Increment (ref counter) % 100 == 0)
+                        Console.WriteLine ("Loaded: {0} torrents", counter);
                 }
-            }
+            );
 
             // If we loaded no torrents, just exist. The user can put files in the torrents directory and start
             // the client again
