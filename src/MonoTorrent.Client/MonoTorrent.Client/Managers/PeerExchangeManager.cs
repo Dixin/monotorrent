@@ -33,6 +33,7 @@ using System.Collections.Generic;
 using MonoTorrent.Connections;
 using MonoTorrent.Messages.Peer;
 using MonoTorrent.Messages.Peer.Libtorrent;
+using MonoTorrent.Messages;
 
 namespace MonoTorrent.Client
 {
@@ -111,16 +112,15 @@ namespace MonoTorrent.Client
             ByteBufferPool.Releaser memoryReleaser = default;
             // Preferentially send ipv4 peers first until those lists are empty. Then send ipv6 peers.
             // Fix this by using a larger buffer, or randomise the order in which this happens.
-            (var message, var releaser) = PeerMessage.Rent<PeerExchangeMessage> ();
+
             if (addedPeers.Count > 0 || droppedPeers.Count > 0) {
                 (added, addedDotF, dropped, memoryReleaser) = Populate (6, MAX_PEERS, addedPeers, droppedPeers);
             } else if (added6Peers.Count > 0 || dropped6Peers.Count > 0) {
-                (added, addedDotF, dropped, memoryReleaser) = Populate (18, MAX_PEERS, addedPeers, droppedPeers);
+                (added6, added6DotF, dropped6, memoryReleaser) = Populate (18, MAX_PEERS, addedPeers, droppedPeers);
             }
 
-            // Populate it with what we have!
-            message.Initialize (new ExtensionSupports (new[] { PeerExchangeMessage.Support }), added, addedDotF, dropped, added6, added6DotF, dropped6, memoryReleaser);
-            PeerId.MessageQueue.Enqueue (message, releaser);
+            PeerId.MessageQueue.Enqueue (MessageEncoder.Extended.WritePeerExchange (PeerId.ExtensionSupports, added.Span, addedDotF.Span, dropped.Span, added6.Span, added6DotF.Span, dropped6.Span));
+            memoryReleaser.Dispose ();
         }
 
         static (Memory<byte> added, Memory<byte> addedDotF, Memory<byte> dropped, ByteBufferPool.Releaser memoryReleaser) Populate (int stride, int maxPeers, Queue<PeerId> addedPeers, Queue<PeerId> droppedPeers)

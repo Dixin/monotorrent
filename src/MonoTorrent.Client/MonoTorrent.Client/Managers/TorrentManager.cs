@@ -40,6 +40,7 @@ using MonoTorrent.Client.RateLimiters;
 using MonoTorrent.Messages.Peer;
 using MonoTorrent.PiecePicking;
 using MonoTorrent.Streaming;
+using MonoTorrent.Messages;
 using MonoTorrent.Trackers;
 
 using ReusableTasks;
@@ -1270,17 +1271,22 @@ namespace MonoTorrent.Client
             => ((IMessageEnqueuer) this).EnqueueRequests (peer, stackalloc PieceSegment[] { block });
         void IMessageEnqueuer.EnqueueRequests (IRequester peer, Span<PieceSegment> segments)
         {
-            (var bundle, var releaser) = RequestBundle.Rent<RequestBundle> ();
-            bundle.Initialize (segments.ToBlockInfo (stackalloc BlockInfo[segments.Length], this));
-            ((PeerId) peer).MessageQueue.Enqueue (bundle, releaser);
+            if (segments.Length == 0)
+                return;
+
+            var releaser = MemoryPool.Default.Rent (segments.Length * RequestMessage.EncodedLength, out var buffer);
+            var b = buffer;
+            foreach (ref var segment in segments){
+                var block = segment.ToBlockInfo (this);
+                b = b.Slice (MessageEncoder.WriteRequest (b.Span, block.PieceIndex, block.StartOffset, block.RequestLength));
+            }
+            ((PeerId) peer).MessageQueue.Enqueue (buffer, releaser);
         }
 
         void IMessageEnqueuer.EnqueueCancellation (IRequester peer, PieceSegment segment)
         {
-            (var msg, var releaser) = PeerMessage.Rent<CancelMessage> ();
             var blockInfo = segment.ToBlockInfo (this);
-            msg.Initialize (blockInfo.PieceIndex, blockInfo.StartOffset, blockInfo.RequestLength);
-            ((PeerId) peer).MessageQueue.Enqueue (msg, releaser);
+            ((PeerId) peer).MessageQueue.Enqueue (MessageEncoder.WriteCancel (blockInfo.PieceIndex, blockInfo.StartOffset, blockInfo.RequestLength));
         }
 
         void IMessageEnqueuer.EnqueueCancellations (IRequester peer, Span<PieceSegment> segments)
