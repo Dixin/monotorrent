@@ -125,7 +125,9 @@ namespace MonoTorrent.Client
         /// a connection can be attempted with a new peer. Defaults to 10 seconds. It is highly recommended
         /// to keep this value within a range of 7-15 seconds unless absolutely necessary.
         /// </summary>
-        public TimeSpan ConnectionTimeout { get; } = Debugger.IsAttached ? TimeSpan.FromSeconds (120) : TimeSpan.FromSeconds (10);
+        public IList<TimeSpan> ConnectionTimeouts { get; } = Debugger.IsAttached
+            ? new[] { TimeSpan.FromSeconds (120) }
+            : new[] { TimeSpan.FromSeconds (3), TimeSpan.FromSeconds (6), TimeSpan.FromSeconds (10) };
 
         /// <summary>
         /// Creates a cache which buffers data before it's written to the disk, or after it's been read from disk.
@@ -191,9 +193,9 @@ namespace MonoTorrent.Client
         });
 
         /// <summary>
-        /// The maximum number of concurrent open connections overall. Defaults to 150.
+        /// The maximum number of concurrent open connections overall. Defaults to 200.
         /// </summary>
-        public int MaximumConnections { get; } = 150;
+        public int MaximumConnections { get; } = 200;
 
         /// <summary>
         /// The maximum download rate, in bytes per second, overall. A value of 0 means unlimited. Defaults to 0.
@@ -201,9 +203,9 @@ namespace MonoTorrent.Client
         public int MaximumDownloadRate { get; }
 
         /// <summary>
-        /// The maximum number of concurrent connection attempts overall. Defaults to 8.
+        /// The maximum number of concurrent connection attempts overall. Defaults to 20.
         /// </summary>
-        public int MaximumHalfOpenConnections { get; } = 12;
+        public int MaximumHalfOpenConnections { get; } = 20;
 
         /// <summary>
         /// The maximum upload rate, in bytes per second, overall. A value of 0 means unlimited. defaults to 0.
@@ -286,7 +288,7 @@ namespace MonoTorrent.Client
         internal EngineSettings (
             IList<EncryptionType> allowedEncryption, bool allowHaveSuppression, bool allowLocalPeerDiscovery, bool allowPortForwarding,
             bool autoSaveLoadDhtCache, bool autoSaveLoadFastResume, bool autoSaveLoadMagnetLinkMetadata, string cacheDirectory,
-            TimeSpan connectionTimeout, IPEndPoint? dhtEndPoint, int diskCacheBytes, CachePolicy diskCachePolicy, FastResumeMode fastResumeMode,
+            IList<TimeSpan> connectionTimeouts, IPEndPoint? dhtEndPoint, int diskCacheBytes, CachePolicy diskCachePolicy, FastResumeMode fastResumeMode,
             FileCreationOptions fileCreationMode, Dictionary<string, IPEndPoint> listenEndPoints,
             int maximumConnections, int maximumDiskReadRate, int maximumDiskWriteRate, int maximumDownloadRate, int maximumHalfOpenConnections,
             int maximumOpenFiles, int maximumUploadRate, IDictionary<string, IPEndPoint> reportedListenEndPoints, bool usePartialFiles,
@@ -308,7 +310,7 @@ namespace MonoTorrent.Client
             DiskCachePolicy = diskCachePolicy;
             CacheDirectory = cacheDirectory;
             ConnectionRetryDelays = Array.AsReadOnly (connectionRetryDelays.ToArray ());
-            ConnectionTimeout = connectionTimeout;
+            ConnectionTimeouts = Array.AsReadOnly (connectionTimeouts.ToArray ());
             FastResumeMode = fastResumeMode;
             FileCreationOptions = fileCreationMode;
             HttpStreamingPrefix = httpStreamingPrefix;

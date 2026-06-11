@@ -169,11 +169,17 @@ namespace MonoTorrent.Client.Modes
             if ((Manager.Torrent != null && Manager.Torrent.IsPrivate) || !Manager.Settings.AllowPeerExchange) {
                 Manager.RaisePeersFound (new PeerExchangePeersAdded (Manager, 0, 0, id));
             } else {
-                // If we already have lots of peers, don't process the messages anymore.
-                if ((Manager.Peers.Available + Manager.OpenConnections) >= Manager.Settings.MaximumConnections)
+                Manager.Peers.AvailablePeers.RemoveAll (static t => t.FailedConnectionAttempts > 0);
+
+                // If we already have can't store all the messages from this peer, try to drop some
+                if ((Manager.Peers.Available + Manager.OpenConnections + message.Added6.Length / 6) >= Manager.Settings.MaximumConnections * 3)
+                    Manager.Peers.AvailablePeers.RemoveAll (static t => t.FailedConnectionAttempts > 0);
+
+                // Now see if there's space to store at least some of the peers from this peer exchange message.
+                if ((Manager.Peers.Available + Manager.OpenConnections) >= Manager.Settings.MaximumConnections * 3)
                     return;
 
-                var newPeers = PeerInfo.FromCompact (message.Added, AddressFamily.InterNetwork);
+                var newPeers =  PeerInfo.FromCompact (message.Added, AddressFamily.InterNetwork);
                 for (int i = 0; i < newPeers.Count && i < message.AddedDotF.Length; i++)
                     newPeers[i] = new PeerInfo (newPeers[i].ConnectionUri, newPeers[i].PeerId, (message.AddedDotF[i] & 0x2) == 0x2);
 
@@ -181,6 +187,8 @@ namespace MonoTorrent.Client.Modes
                 for (int i = 0; i < newPeers2.Count && i < message.Added6DotF.Length; i++)
                     newPeers2[i] = new PeerInfo (newPeers2[i].ConnectionUri, newPeers2[i].PeerId, (message.Added6DotF[i] & 0x2) == 0x2);
 
+                // Peer exchange is more likely to provide fresh/connectable peers than trackers or dht.
+                // Prioritise them to the top of the list.
                 int count = Manager.AddPeers (newPeers, prioritise: true, fromTracker: false) + Manager.AddPeers (newPeers2, prioritise: true, fromTracker: false);
                 Manager.RaisePeersFound (new PeerExchangePeersAdded (Manager, count, newPeers.Count + newPeers2.Count, id));
             }

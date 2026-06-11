@@ -128,7 +128,7 @@ namespace MonoTorrent.Client
         {
             var fake = new FakeConnection (new Uri ("ipv4://1.2.3.4:56789"));
             var builder = new EngineSettingsBuilder (EngineHelpers.CreateSettings ()) {
-                ConnectionTimeout = TimeSpan.FromHours (1),
+                ConnectionTimeouts = new List<TimeSpan> { TimeSpan.FromHours (1) },
                 AllowedEncryption = new System.Collections.Generic.List<EncryptionType> { EncryptionType.PlainText }
             };
             var engine = EngineHelpers.Create (

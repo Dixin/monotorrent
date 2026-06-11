@@ -59,15 +59,17 @@ namespace MonoTorrent.Client
 
         struct AsyncConnectState : IEquatable<AsyncConnectState>
         {
-            public AsyncConnectState (TorrentManager manager, IPeerConnection connection, ValueStopwatch timer)
+            public AsyncConnectState (TorrentManager manager, IPeerConnection connection, TimeSpan timeout, ValueStopwatch timer)
             {
                 Manager = manager;
                 Connection = connection;
+                Timeout = timeout;
                 Timer = timer;
             }
 
             public readonly IPeerConnection Connection;
             public readonly TorrentManager Manager;
+            public readonly TimeSpan Timeout;
             public readonly ValueStopwatch Timer;
 
             public bool Equals (AsyncConnectState other)
@@ -181,7 +183,8 @@ namespace MonoTorrent.Client
                 if (connection == null)
                     return ConnectionFailureReason.UnknownUriSchema;
 
-                var state = new AsyncConnectState (manager, connection, ValueStopwatch.StartNew ());
+                var timeout = Settings.ConnectionTimeouts[Math.Min (Settings.ConnectionTimeouts.Count - 1, peer.FailedConnectionAttempts)];
+                var state = new AsyncConnectState (manager, connection, timeout, ValueStopwatch.StartNew ());
                 try {
                     PendingConnects.Add (state);
 
@@ -259,7 +262,8 @@ namespace MonoTorrent.Client
                 MessageEncoder.WriteHandshake (handshakeBuffer.Span, manager.InfoHashes.V1OrV2.Span.Slice (0, 20), LocalPeerId.Span, enableFastPeer: true, enableExtended: true, supportUpgradeToV2: canUpgradeToV2);
                 logger.InfoFormatted (connection, "Sending handshake message with peer id '{0}' and infohash: {1}", LocalPeerId, manager.InfoHashes.V1OrV2);
 
-                EncryptorFactory.EncryptorResult result = await EncryptorFactory.CheckOutgoingConnectionAsync (connection, allowedEncryption, manager.InfoHashes.V1OrV2.Truncate (), handshakeBuffer, Factories, Settings.ConnectionTimeout);
+                var timeout = Settings.ConnectionTimeouts[Math.Min (Settings.ConnectionTimeouts.Count - 1, peer.FailedConnectionAttempts)];
+                EncryptorFactory.EncryptorResult result = await EncryptorFactory.CheckOutgoingConnectionAsync (connection, allowedEncryption, manager.InfoHashes.V1OrV2.Truncate (), handshakeBuffer, Factories, timeout);
                 decryptor = result.Decryptor;
                 encryptor = result.Encryptor;
 
@@ -575,12 +579,12 @@ namespace MonoTorrent.Client
         }
 
         /// <summary>
-        /// Cancel all pending connection for the given <see cref="TorrentManager"/>, or which have exceeded <see cref="EngineSettings.ConnectionTimeout"/>
+        /// Cancel all pending connection for the given <see cref="TorrentManager"/>, or which have exceeded <see cref="EngineSettings.ConnectionTimeouts"/>
         /// </summary>
         internal void CancelPendingConnects (TorrentManager? manager)
         {
             foreach (AsyncConnectState pending in PendingConnects)
-                if (pending.Manager == manager || pending.Timer.Elapsed > Settings.ConnectionTimeout)
+                if (pending.Manager == manager || pending.Timer.Elapsed > pending.Timeout)
                     pending.Connection.Dispose ();
         }
 

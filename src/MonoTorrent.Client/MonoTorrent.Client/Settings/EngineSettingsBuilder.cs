@@ -131,17 +131,10 @@ namespace MonoTorrent.Client
 
         /// <summary>
         /// If a connection attempt does not complete within the given timeout, it will be cancelled so
-        /// a connection can be attempted with a new peer. Defaults to 10 seconds. It is highly recommended
-        /// to keep this value within a range of 7-15 seconds unless absolutely necessary.
+        /// a connection can be attempted with a new peer. Defaults to a range of timeouts, starting
+        /// with 4 seconds for the first attempt, growing to 10 seconds for the final attempts.
         /// </summary>
-        public TimeSpan ConnectionTimeout {
-            get => connectionTimeout;
-            set {
-                if (value < TimeSpan.Zero)
-                    throw new ArgumentOutOfRangeException (nameof (value), "The timeout must be greater than 0");
-                connectionTimeout = value;
-            }
-        }
+        public List<TimeSpan> ConnectionTimeouts { get; set; }
 
         /// <summary>
         /// Creates a cache which buffers data before it's written to the disk, or after it's been read from disk.
@@ -342,7 +335,7 @@ namespace MonoTorrent.Client
             AutoSaveLoadMagnetLinkMetadata = settings.AutoSaveLoadMagnetLinkMetadata;
             CacheDirectory = settings.CacheDirectory;
             ConnectionRetryDelays = new List<TimeSpan> (settings.ConnectionRetryDelays);
-            ConnectionTimeout = settings.ConnectionTimeout;
+            ConnectionTimeouts = new List<TimeSpan> (settings.ConnectionTimeouts);
             DhtEndPoint = settings.DhtEndPoint;
             DiskCacheBytes = settings.DiskCacheBytes;
             DiskCachePolicy = settings.DiskCachePolicy;
@@ -377,7 +370,16 @@ namespace MonoTorrent.Client
             if (ConnectionRetryDelays is null)
                 throw new ArgumentNullException (nameof (ConnectionRetryDelays));
             if (ConnectionRetryDelays.Any (t => t < TimeSpan.Zero))
-                throw new ArgumentException ("ConnectionRetryDelays cannot be less than zero");
+                throw new ArgumentException ("ConnectionRetryDelays cannot be less than zero", nameof (ConnectionRetryDelays));
+            if (ConnectionRetryDelays.Count == 0)
+                throw new ArgumentException ("At least one timeout must be specified", nameof (ConnectionRetryDelays));
+
+            if (ConnectionTimeouts is null)
+                throw new ArgumentNullException (nameof (ConnectionTimeouts));
+            if (ConnectionTimeouts.Any (t => t < TimeSpan.Zero))
+                throw new ArgumentException ("ConnectionTimeouts cannot be less than zero", nameof (ConnectionTimeouts));
+            if (ConnectionTimeouts.Count == 0)
+                throw new ArgumentException ("At least one connection timeout must be specified", nameof (ConnectionTimeouts));
 
             return new EngineSettings (
                 allowedEncryption: AllowedEncryption,
@@ -389,7 +391,7 @@ namespace MonoTorrent.Client
                 autoSaveLoadMagnetLinkMetadata: AutoSaveLoadMagnetLinkMetadata,
                 cacheDirectory: string.IsNullOrEmpty (CacheDirectory) ? Environment.CurrentDirectory : Path.GetFullPath (CacheDirectory),
                 connectionRetryDelays: ConnectionRetryDelays,
-                connectionTimeout: ConnectionTimeout,
+                connectionTimeouts: ConnectionTimeouts,
                 dhtEndPoint: DhtEndPoint,
                 diskCacheBytes: DiskCacheBytes,
                 diskCachePolicy: DiskCachePolicy,
