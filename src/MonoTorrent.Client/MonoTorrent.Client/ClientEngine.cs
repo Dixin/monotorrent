@@ -205,7 +205,7 @@ namespace MonoTorrent.Client
         /// The <see cref="TorrentManager"/> instances registered by the user and the instances
         /// implicitly created by <see cref="DownloadMetadataAsync(MagnetLink, CancellationToken)"/>.
         /// </summary>
-        readonly List<TorrentManager> allTorrents;
+        readonly Dictionary<InfoHash, TorrentManager> allTorrents;
 
         readonly RateLimiter uploadLimiter;
         readonly RateLimiterGroup uploadLimiters;
@@ -304,7 +304,7 @@ namespace MonoTorrent.Client
             Settings = settings ?? throw new ArgumentNullException (nameof (settings));
             CheckSettingsAreValid (Settings);
 
-            allTorrents = new List<TorrentManager> ();
+            allTorrents = new Dictionary<InfoHash, TorrentManager> ();
             dhtNodeLocker = new SemaphoreSlim (1, 1);
             publicTorrents = new List<TorrentManager> ();
             Torrents = new ReadOnlyCollection<TorrentManager> (publicTorrents);
@@ -368,8 +368,12 @@ namespace MonoTorrent.Client
 
             var metadataCachePath = Settings.GetMetadataPath (torrent.InfoHashes);
             if (metadataPath != metadataCachePath) {
-                Directory.CreateDirectory (Path.GetDirectoryName (metadataCachePath)!);
-                File.Copy (metadataPath, metadataCachePath, true);
+                try {
+                    File.Copy (metadataPath, metadataCachePath, true);
+                } catch {
+                    Directory.CreateDirectory (Path.GetDirectoryName (metadataCachePath)!);
+                    File.Copy (metadataPath, metadataCachePath, true);
+                }
             }
             return await AddAsync (null, torrent, saveDirectory, settings);
         }
@@ -486,7 +490,11 @@ namespace MonoTorrent.Client
             if (manager.State != TorrentState.Stopped)
                 throw new TorrentException ("The manager must be stopped before it can be unregistered");
 
-            allTorrents.Remove (manager);
+            if (manager.InfoHashes.V1 is not null)
+                allTorrents.Remove (manager.InfoHashes.V1);
+            if (manager.InfoHashes.V2 is not null)
+                allTorrents.Remove (manager.InfoHashes.V2.Truncate ());
+
             publicTorrents.Remove (manager);
             ConnectionManager.Remove (manager);
             listenManager.Remove (manager.InfoHashes);
@@ -512,8 +520,15 @@ namespace MonoTorrent.Client
         async Task<bool> RemoveAsync (InfoHashes infoHashes, RemoveMode mode)
         {
             await MainLoop;
-            var manager = allTorrents.FirstOrDefault (t => t.InfoHashes == infoHashes);
-            return manager != null && await RemoveAsync (manager, mode);
+
+            if (infoHashes.V1 is not null && allTorrents.TryGetValue (infoHashes.V1, out var manager))
+                await RemoveAsync (manager, mode);
+            else if (infoHashes.V2 is not null && allTorrents.TryGetValue (infoHashes.V2.Truncate (), out manager))
+                await RemoveAsync (manager, mode);
+            else
+                return false;
+
+            return true;
         }
 
         async Task ChangePieceWriterAsync (IPieceWriter writer)
@@ -538,7 +553,8 @@ namespace MonoTorrent.Client
             if (infoHashes == null)
                 return false;
 
-            return allTorrents.Exists (m => m.InfoHashes == infoHashes);
+            return (infoHashes.V1 is not null && allTorrents.ContainsKey (infoHashes.V1))
+                || (infoHashes.V2 is not null && allTorrents.ContainsKey (infoHashes.V2.Truncate ()));
         }
 
         public bool Contains (Torrent torrent)
@@ -609,9 +625,7 @@ namespace MonoTorrent.Client
             try {
                 await MainLoop;
 
-                TorrentManager? manager = allTorrents.FirstOrDefault (t => t.InfoHashes.Contains (args.InfoHash));
-                // There's no TorrentManager in the engine
-                if (manager == null)
+                if (!allTorrents.TryGetValue (args.InfoHash.Truncate (), out var manager))
                     return;
 
                 // The torrent is marked as private, so we can't add random people
@@ -649,7 +663,11 @@ namespace MonoTorrent.Client
             if (Contains (manager.InfoHashes))
                 throw new TorrentException ("A manager for this torrent has already been registered");
 
-            allTorrents.Add (manager);
+            if (manager.InfoHashes.V1 is not null)
+                allTorrents.Add (manager.InfoHashes.V1, manager);
+            if (manager.InfoHashes.V2 is not null)
+                allTorrents.Add (manager.InfoHashes.V2.Truncate (), manager);
+
             if (isPublic)
                 publicTorrents.Add (manager);
             ConnectionManager.Add (manager);
@@ -704,8 +722,7 @@ namespace MonoTorrent.Client
         {
             await MainLoop;
 
-            TorrentManager? manager = allTorrents.FirstOrDefault (t => t.InfoHashes.Contains (e.InfoHash));
-            if (manager == null)
+            if (!allTorrents.TryGetValue (e.InfoHash.Truncate (), out var manager))
                 return;
 
             if (manager.CanUseDht) {
@@ -775,8 +792,9 @@ namespace MonoTorrent.Client
             ConnectionManager.TryConnect ();
             DiskManager.Tick ();
 
-            for (int i = 0; i < allTorrents.Count; i++)
-                allTorrents[i].Mode.Tick (tickCount);
+            foreach (var torrent in allTorrents) {
+                torrent.Value.Mode.Tick (tickCount);
+            }
 
             RaiseStatsUpdate (new StatsUpdateEventArgs ());
         }
@@ -814,7 +832,15 @@ namespace MonoTorrent.Client
         {
             CheckDisposed ();
             // If all the torrents are stopped, stop ticking
-            IsRunning = allTorrents.Exists (m => m.State != TorrentState.Stopped);
+            bool anyRunning = false;
+            foreach (var v in allTorrents) {
+                if (v.Value.State != TorrentState.Stopped) {
+                    anyRunning = true;
+                    break;
+                }
+            }
+
+            IsRunning = anyRunning;
             if (!IsRunning) {
                 await UnmapAndStopPeerListeners ();
 
