@@ -169,8 +169,6 @@ namespace MonoTorrent.Client.Modes
             if ((Manager.Torrent != null && Manager.Torrent.IsPrivate) || !Manager.Settings.AllowPeerExchange) {
                 Manager.RaisePeersFound (new PeerExchangePeersAdded (Manager, 0, 0, id));
             } else {
-                Manager.Peers.AvailablePeers.RemoveAll (static t => t.FailedConnectionAttempts > 0);
-
                 // If we already have can't store all the messages from this peer, try to drop some
                 if ((Manager.Peers.Available + Manager.OpenConnections + message.Added6.Length / 6) >= Manager.Settings.MaximumConnections * 3)
                     Manager.Peers.AvailablePeers.RemoveAll (static t => t.FailedConnectionAttempts > 0);
