@@ -269,23 +269,7 @@ namespace MonoTorrent.Dht
         internal async ReusableTask<SendQueryEventArgs> SendQueryAsync (ReadOnlyMemory<byte> query, Node node)
         {
             await MainLoop;
-
-            var e = default (SendQueryEventArgs);
-            for (int i = 0; i < 3; i++) {
-                e = await MessageLoop.SendAsync (query, node);
-
-                // If the message timed out and we we haven't already hit the maximum retries
-                // send again. Otherwise we propagate the eventargs through the Complete event.
-                if (e.TimedOut) {
-                    node.FailedCount++;
-                    continue;
-                } else {
-                    node.Seen ();
-                    return e;
-                }
-            }
-
-            return e;
+            return await MessageLoop.SendAsync (query, node);
         }
 
         public async ReusableTask SetBootstrapRoutersAsync (IEnumerable<BootstrapRouter> routers)

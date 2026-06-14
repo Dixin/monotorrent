@@ -64,6 +64,7 @@ namespace MonoTorrent.Dht
             public readonly CompactEndPoint Destination;
             public readonly ReadOnlyMemory<byte> Message;
             public readonly Node? Node;
+            public int RemainingRetries = 2;
             public ValueStopwatch SentAt;
         }
 
@@ -264,11 +265,18 @@ namespace MonoTorrent.Dht
             DhtEngine.MainLoop.CheckThread ();
 
             var m = KrpcMessage.Parse (v.Message);
-            DhtMessageFactory.UnregisterSend (m.TransactionId, v.Destination);
             WaitingResponse.Remove ((TransactionId.From (m.TransactionId), v.Destination));
+            v.Node!.FailedCount++;
 
-            v.CompletionSource?.TrySetResult (new SendQueryEventArgs (v.Node!, v.Destination, v.Message));
             RaiseMessageSent (v.Node!, v.Destination, v.Message);
+
+            if (v.RemainingRetries > 0) {
+                v.RemainingRetries--;
+                SendQueue.Enqueue (v);
+            } else {
+                DhtMessageFactory.UnregisterSend (m.TransactionId, v.Destination);
+                v.CompletionSource?.TrySetResult (new SendQueryEventArgs (v.Node!, v.Destination, v.Message));
+            }
         }
 
         void ReceiveMessage ()
@@ -308,7 +316,7 @@ namespace MonoTorrent.Dht
                 
                 Node? node = Engine.RoutingTable.FindNode (new NodeId (rawResponse.NodeId));
                 if (node == null) {
-                    node = new Node (new NodeId (rawResponse.NodeId), source);
+                    node = query.Node ?? new Node (new NodeId (rawResponse.NodeId), source);
                     Engine.RoutingTable.Add (node);
                 }
                 node.Seen ();
